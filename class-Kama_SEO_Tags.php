@@ -151,8 +151,6 @@ class Kama_SEO_Tags {
 				/**
 				 * Allow to set `og:image` `og:image:width` `og:image:height` values if it's not.
 				 *
-				 * `kama_og_meta_thumb_id` - The old name of the hook (from ver 1.3).
-				 *
 				 * @param int|string|array|WP_Post  $image_data  WP attachment ID or Image URL or Array [ image_url, width, height ].
 				 */
 				$image = apply_filters( 'kama_og_meta_image', $image );
@@ -169,7 +167,7 @@ class Kama_SEO_Tags {
 					if( $image ){
 
 						list( $image_url, $image_width, $image_height, $image_alt, $image_mime ) = array_merge(
-							image_downsize( $image->ID, 'full' ),
+							array_slice( image_downsize( $image->ID, 'full' ), 0, 3 ),
 							[ $image->post_excerpt, $image->post_mime_type ]
 						);
 					}

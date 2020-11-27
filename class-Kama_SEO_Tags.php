@@ -158,10 +158,19 @@ class Kama_SEO_Tags {
 
 			if( $image ){
 
-				if( $image instanceof WP_Post )
-					list( $image_url, $image_width, $image_height, $image_caption, $image_mime ) = array_merge( image_downsize( $image, 'full' ), [ $image->post_excerpt, $image->post_mime_type ] );
-				elseif( is_numeric($image) )
-					list( $image_url, $image_width, $image_height ) = image_downsize( $image, 'full' );
+				if( $image instanceof WP_Post || is_numeric($image) ){
+					
+					if( is_numeric($image) )
+						$image = get_post( $image );
+					
+					if( $image ){
+						
+						list( $image_url, $image_width, $image_height, $image_caption, $image_mime ) = array_merge(
+							image_downsize( $image->ID, 'full' ), 
+							[ $image->post_excerpt, $image->post_mime_type ]
+						);
+					}
+				}
 				elseif( is_array($image) )
 					list( $image_url, $image_width, $image_height ) = $image;
 				else

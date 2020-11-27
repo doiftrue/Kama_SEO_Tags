@@ -78,6 +78,8 @@ class Kama_SEO_Tags {
 		// image
 		if( 'image' ){
 
+			$image_url = null;
+
 			/**
 			 * Allow to change `og:image` `og:image:width` `og:image:height` values.
 			 *
@@ -154,19 +156,20 @@ class Kama_SEO_Tags {
 				 * @param int|string|array|WP_Post  $image_data  WP attachment ID or Image URL or Array [ image_url, width, height ].
 				 */
 				$image = apply_filters( 'kama_og_meta_image', $image );
+				$image = apply_filters( 'kama_og_meta_thumb_id', $image ); // backcompat
 			}
 
 			if( $image ){
 
 				if( $image instanceof WP_Post || is_numeric($image) ){
-					
+
 					if( is_numeric($image) )
 						$image = get_post( $image );
-					
+
 					if( $image ){
-						
-						list( $image_url, $image_width, $image_height, $image_caption, $image_mime ) = array_merge(
-							image_downsize( $image->ID, 'full' ), 
+
+						list( $image_url, $image_width, $image_height, $image_alt, $image_mime ) = array_merge(
+							image_downsize( $image->ID, 'full' ),
 							[ $image->post_excerpt, $image->post_mime_type ]
 						);
 					}
@@ -177,15 +180,13 @@ class Kama_SEO_Tags {
 					$image_url = $image;
 			}
 
-			$image_url = !empty( $image_url ) ? $image_url : '';
-
 			if( $image_url ){
 
 				$els['og:image'] = $image_url;
-				if( !empty($image_width) )   $els['og:image:width']  = (int) $image_width;
-				if( !empty($image_height) )  $els['og:image:height'] = (int) $image_height;
-				if( !empty($image_caption) ) $els['og:image:alt'] = sanitize_text_field( $image_caption );
-				if( !empty($image_mime) )    $els['og:image:type'] = $image_mime;
+				if( !empty($image_width) )  $els['og:image:width']  = (int) $image_width;
+				if( !empty($image_height) ) $els['og:image:height'] = (int) $image_height;
+				if( !empty($image_alt) )    $els['og:image:alt'] = sanitize_text_field( $image_alt );
+				if( !empty($image_mime) )   $els['og:image:type'] = $image_mime;
 			}
 
 		}
@@ -194,7 +195,7 @@ class Kama_SEO_Tags {
 		$els['twitter:card'] = 'summary';
 		$els['twitter:title'] = $els['og:title'];
 		$els['twitter:description'] = $els['og:description'];
-		if( isset($els['og:image']) )
+		if( !empty($els['og:image']) )
 			$els['twitter:image'] = $els['og:image'];
 
 		/**

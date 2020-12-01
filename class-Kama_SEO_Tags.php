@@ -32,7 +32,7 @@ class Kama_SEO_Tags {
 	/**
 	 * Open Graph, twitter data in `<head>`.
 	 *
-	 * See docs: http://ogp.me/
+	 * @See Documentation: http://ogp.me/
 	 */
 	static function og_meta(){
 
@@ -442,41 +442,49 @@ class Kama_SEO_Tags {
 	}
 
 	/**
-	 * Метатег robots
+	 * Метатег robots.
 	 *
-	 * Чтобы задать свои атрибуты метатега robots записи, создайте произвольное поле с ключом robots
-	 * и необходимым значением, например: noindex,nofollow
+	 * Чтобы задать свои атрибуты метатега robots записи, создайте произвольное поле с ключом `robots`
+	 * и значением в нём, например: `noindex,nofollow`.
 	 *
-	 * Укажите параметр $allow_types, чтобы разрешить индексацию типов страниц.
+	 * @param string|array $allow_callbacks Какие типы страниц нужно индексировать (через запятую):
+	 *                                      cpage, is_category, is_tag, is_tax, is_author, is_year, is_month,
+	 *                                      is_attachment, is_day, is_search, is_feed, is_post_type_archive, is_paged
+	 *                                      (можно указать любые php функции в виде строки)
+	 *                                      cpage - страницы комментариев.
+	 * @param string $robots                Как закрывать индексацию: noindex,nofollow.
 	 *
-	 * @ $allow_types Какие типы страниц нужно индексировать (через запятую):
-	 *                cpage, is_category, is_tag, is_tax, is_author, is_year, is_month,
-	 *                is_attachment, is_day, is_search, is_feed, is_post_type_archive, is_paged
-	 *                (можно использовать любые условные теги в виде строки)
-	 *                cpage - страницы комментариев
-	 * @ $robots      Как закрывать индексацию: noindex,nofollow
+	 * @return string
 	 */
-	static function meta_robots( $allow_types = null, $robots = 'noindex,nofollow' ){
+	static function meta_robots( $allow_callbacks = null ){
 		global $post;
-
-		if( null === $allow_types )
-			$allow_types = 'cpage, is_attachment, is_category, is_tag, is_tax, is_paged, is_post_type_archive';
 
 		if( ( is_home() || is_front_page() ) && ! is_paged() )
 			return '';
 
 		if( is_singular() ){
-			// если это не вложение или вложение но оно разрешено
-			if( ! is_attachment() || false !== strpos($allow_types,'is_attachment') )
-				$robots = get_post_meta( $post->ID, 'robots', true );
+			$robots = get_post_meta( $post->ID, 'robots', true );
 		}
 		else {
-			$types = preg_split('~[, ]+~', $allow_types );
-			$types = array_filter( $types );
 
-			foreach( $types as $type ){
-				if( $type == 'cpage' && strpos($_SERVER['REQUEST_URI'], '/comment-page') ) $robots = false;
-				elseif( function_exists($type) && $type() )                                $robots = false;
+			if( is_tax() || is_category() || is_tag() )
+				$robots = get_term_meta( $post->ID, 'robots', true );
+
+			if( empty($robots) ){
+
+				$robots = 'noindex,nofollow';
+
+				if( null === $allow_callbacks )
+					$allow_callbacks = [ 'cpage', 'is_attachment', 'is_category', 'is_tag', 'is_tax', 'is_paged', 'is_post_type_archive' ];
+
+				// open
+				foreach( wp_parse_list( $allow_callbacks ) as $type ){
+
+					if( 'cpage' === $type && strpos($_SERVER['REQUEST_URI'], '/comment-page') )
+						$robots = '';
+					elseif( function_exists($type) && $type() )
+						$robots = '';
+				}
 			}
 		}
 

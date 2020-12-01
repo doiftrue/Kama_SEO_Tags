@@ -6,7 +6,7 @@
  *
  * @author Kama
  *
- * @version 1.4
+ * @version 1.5
  */
 class Kama_SEO_Tags {
 
@@ -480,7 +480,8 @@ class Kama_SEO_Tags {
 			}
 		}
 
-		$robots = apply_filters( 'kama_meta_robots_close', $robots );
+		$robots = apply_filters( 'kama_meta_robots', $robots );
+		$robots = apply_filters( 'kama_meta_robots_close', $robots ); // backcompat
 
 		return $robots ? "<meta name=\"robots\" content=\"$robots\" />\n" : '';
 	}

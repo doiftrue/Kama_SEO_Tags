@@ -1,3 +1,6 @@
+1.5 - 01-12-2020
+- Hook `kama_meta_robots_close` renamed to `kama_meta_robots`
+
 1.4 - 27.11.2020
 - New: Изменил логику `og_meta()`:
     - Теперь все собирается в массив. 

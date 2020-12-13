@@ -1,3 +1,7 @@
+1.6 - 13-12-2020
+- paged becomes real part of implode.
+- `$paged` parametesr added to `kama_meta_title` hook.
+
 1.5 - 01-12-2020
 - `get_term_meta()` for meta_robots(). Simplify the code of meta_robots().
 - Hook `kama_meta_robots_close` renamed to `kama_meta_robots`

@@ -6,7 +6,7 @@
  *
  * @author Kama
  *
- * @version 1.5
+ * @version 1.6
  */
 class Kama_SEO_Tags {
 
@@ -233,6 +233,7 @@ class Kama_SEO_Tags {
 	 * @param true|false $add_blog_name  добавлять ли название блога в конец заголовка для архивов.
 	 */
 	static function meta_title( $sep = '»', $add_blog_name = true ){
+
 		static $cache; if( $cache ) return $cache;
 
 		// Support for wp_get_document_title() function hook
@@ -249,21 +250,21 @@ class Kama_SEO_Tags {
 			'compage' => 'Комментарии %s',
 			'author'  => 'Статьи автора: %s',
 			'archive' => 'Архив за',
-			'paged'   => '(страница %d)',
+			'paged'   => 'Страница %d',
 		] );
 
 		$parts = [
 			'prev'  => '',
 			'title' => '',
-			'after' => '',
 			'paged' => '',
+			'after' => '',
 		];
-		$title = & $parts['title']; // упростим
-		$after = & $parts['after']; // упростим
 
-		if(0){}
+		$title = & $parts['title'];
+		$after = & $parts['after'];
+
 		// 404
-		elseif ( is_404() ){
+		if ( is_404() ){
 			$title = $l10n['404'];
 		}
 		// поиск
@@ -316,15 +317,15 @@ class Kama_SEO_Tags {
 		}
 		// архив даты
 		elseif ( ( get_locale() === 'ru_RU' ) && ( is_day() || is_month() || is_year() ) ){
-			$rus_month  = array('', 'январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь');
-			$rus_month2 = array('', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря');
-			$year       = get_query_var('year');
-			$monthnum   = get_query_var('monthnum');
-			$day        = get_query_var('day');
+			$rus_month = [ '', 'январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь' ];
+			$rus_month2 = [ '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря' ];
+			$year     = get_query_var('year');
+			$monthnum = get_query_var('monthnum');
+			$day      = get_query_var('day');
 
 			if( is_year() )      $dat = "$year год";
-			elseif( is_month() ) $dat = "$rus_month[$monthnum] $year года";
-			elseif( is_day() )   $dat = "$day $rus_month2[$monthnum] $year года";
+			elseif( is_month() ) $dat = "{$rus_month[ $monthnum ]} $year года";
+			elseif( is_day() )   $dat = "$day {$rus_month2[ $monthnum ]} $year года";
 
 			$title = sprintf( $l10n['archive'], $dat );
 			$after = 'blog_name';
@@ -342,20 +343,14 @@ class Kama_SEO_Tags {
 
 		// позволяет фильтровать title как угодно. Сам заголово
 		// $parts содержит массив с элементами: prev - текст до, title - заголовок, after - текст после
-		$parts = apply_filters_ref_array( 'kama_meta_title_parts', array($parts, $l10n) );
+		$parts = apply_filters( 'kama_meta_title_parts', $parts, $l10n );
 
-		if( $after == 'blog_name' )
+		if( 'blog_name' === $after )
 			$after = $add_blog_name ? get_bloginfo('name') : '';
 
-		// добавим пагинацию в title
-		if( $parts['paged'] ){
-			$parts['title'] .=  " {$parts['paged']}";
-			unset( $parts['paged'] );
-		}
+		$title = implode( ' ' . trim( $sep ) . ' ', array_filter( $parts ) );
 
-		$title = implode( ' '. trim($sep) .' ', array_filter($parts) );
-
-		$title = apply_filters( 'kama_meta_title', $title );
+		$title = apply_filters( 'kama_meta_title', $title, $parts );
 
 		$title = wptexturize( $title );
 		$title = esc_html( $title );

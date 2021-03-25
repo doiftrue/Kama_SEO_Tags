@@ -6,7 +6,7 @@
  *
  * @author Kama
  *
- * @version 1.6
+ * @version 1.6.1
  */
 class Kama_SEO_Tags {
 
@@ -159,9 +159,9 @@ class Kama_SEO_Tags {
 
 			if( $image ){
 
-				if( $image instanceof WP_Post || is_numeric($image) ){
+				if( $image instanceof WP_Post || is_numeric( $image ) ){
 
-					if( is_numeric($image) )
+					if( is_numeric( $image ) )
 						$image = get_post( $image );
 
 					if( $image ){
@@ -172,7 +172,7 @@ class Kama_SEO_Tags {
 						);
 					}
 				}
-				elseif( is_array($image) )
+				elseif( is_array( $image ) )
 					list( $image_url, $image_width, $image_height ) = $image;
 				else
 					$image_url = $image;
@@ -181,10 +181,10 @@ class Kama_SEO_Tags {
 			if( $image_url ){
 
 				$els['og:image'] = $image_url;
-				if( !empty($image_width) )  $els['og:image:width']  = (int) $image_width;
-				if( !empty($image_height) ) $els['og:image:height'] = (int) $image_height;
-				if( !empty($image_alt) )    $els['og:image:alt'] = sanitize_text_field( $image_alt );
-				if( !empty($image_mime) )   $els['og:image:type'] = $image_mime;
+				if( ! empty( $image_width ) )  $els['og:image:width']  = (int) $image_width;
+				if( ! empty( $image_height ) ) $els['og:image:height'] = (int) $image_height;
+				if( ! empty( $image_alt ) )    $els['og:image:alt'] = sanitize_text_field( $image_alt );
+				if( ! empty( $image_mime ) )   $els['og:image:type'] = $image_mime;
 			}
 
 		}
@@ -264,14 +264,14 @@ class Kama_SEO_Tags {
 		$after = & $parts['after'];
 
 		// 404
-		if ( is_404() ){
+		if( is_404() ){
 			$title = $l10n['404'];
 		}
-		// поиск
-		elseif ( is_search() ){
-			$title = sprintf( $l10n['search'], get_query_var('s') );
+		// search
+		elseif( is_search() ){
+			$title = sprintf( $l10n['search'], get_query_var( 's' ) );
 		}
-		// главная
+		// front_page
 		elseif( is_front_page() ){
 			if( is_page() && $title = get_post_meta( $post->ID, 'title', 1 ) ){
 				// $title определен
@@ -280,7 +280,7 @@ class Kama_SEO_Tags {
 				$after = get_bloginfo('description');
 			}
 		}
-		// отдельная страница
+		// singular
 		elseif( is_singular() || ( is_home() && ! is_front_page() ) || ( is_page() && ! is_front_page() ) ){
 			$title = get_post_meta( $post->ID, 'title', 1 ); // указанный title у записи в приоритете
 
@@ -290,12 +290,12 @@ class Kama_SEO_Tags {
 			if( $cpage = get_query_var('cpage') )
 				$parts['prev'] = sprintf( $l10n['compage'], $cpage );
 		}
-		// архив типа поста
-		elseif ( is_post_type_archive() ){
+		// post_type_archive
+		elseif( is_post_type_archive() ){
 			$title = post_type_archive_title('', 0 );
 			$after = 'blog_name';
 		}
-		// таксономии
+		// taxonomy
 		elseif( is_category() || is_tag() || is_tax() ){
 			$term = get_queried_object();
 
@@ -310,13 +310,13 @@ class Kama_SEO_Tags {
 
 			$after = 'blog_name';
 		}
-		// архив автора
-		elseif ( is_author() ){
+		// author posts archive
+		elseif( is_author() ){
 			$title = sprintf( $l10n['author'], get_queried_object()->display_name );
 			$after = 'blog_name';
 		}
-		// архив даты
-		elseif ( ( get_locale() === 'ru_RU' ) && ( is_day() || is_month() || is_year() ) ){
+		// date archive
+		elseif( ( get_locale() === 'ru_RU' ) && ( is_day() || is_month() || is_year() ) ){
 			$rus_month = [ '', 'январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь' ];
 			$rus_month2 = [ '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря' ];
 			$year     = get_query_var('year');
@@ -330,7 +330,7 @@ class Kama_SEO_Tags {
 			$title = sprintf( $l10n['archive'], $dat );
 			$after = 'blog_name';
 		}
-		// остальные архивы
+		// other archives
 		else {
 			$title = get_the_archive_title();
 			$after = 'blog_name';
@@ -527,16 +527,16 @@ class Kama_SEO_Tags {
 
 			// wp 4.4
 			if( function_exists('get_term_meta') ){
-				$out = get_term_meta( $term->term_id, "keywords", true );
+				$out = get_term_meta( $term->term_id, 'keywords', true );
 			}
 			else{
 				preg_match( '!\[keywords=([^\]]+)\]!iU', $term->description, $match );
-				$out = isset($match[1]) ? $match[1] : '';
+				$out = isset( $match[1] ) ? $match[1] : '';
 			}
 		}
 
 		if( $out && $def_keywords )
-			$out = $out .', '. $def_keywords;
+			$out = "$out, $def_keywords";
 
 		return $out ? "<meta name=\"keywords\" content=\"$out\" />\n" : '';
 	}

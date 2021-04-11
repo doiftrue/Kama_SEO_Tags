@@ -6,7 +6,7 @@
  *
  * @author Kama
  *
- * @version 1.6.1
+ * @version 1.6.2
  */
 class Kama_SEO_Tags {
 
@@ -20,7 +20,7 @@ class Kama_SEO_Tags {
 	static function render_seo_tags(){
 		//remove_theme_support( 'title-tag' ); // не обязательно
 
-		echo '<title>'. self::meta_title(' — ') .'</title>'."\n\n";
+		echo '<title>'. self::meta_title( ' — ' ) .'</title>'."\n\n";
 
 		echo self::meta_description();
 		echo self::meta_keywords();
@@ -229,8 +229,8 @@ class Kama_SEO_Tags {
 	 * Для записей, если нужно, чтобы заголовок страницы отличался от заголовка записи,
 	 * создайте произвольное поле title и впишите туда произвольный заголовок.
 	 *
-	 * @param string     $sep            разделитель
-	 * @param true|false $add_blog_name  добавлять ли название блога в конец заголовка для архивов.
+	 * @param string     $sep            Separator.
+	 * @param true|false $add_blog_name  Whether to add blog name at the end of titles of archive pages.
 	 */
 	static function meta_title( $sep = '»', $add_blog_name = true ){
 
@@ -260,60 +260,57 @@ class Kama_SEO_Tags {
 			'after' => '',
 		];
 
-		$title = & $parts['title'];
-		$after = & $parts['after'];
-
 		// 404
 		if( is_404() ){
-			$title = $l10n['404'];
+			$parts['title'] = $l10n['404'];
 		}
 		// search
 		elseif( is_search() ){
-			$title = sprintf( $l10n['search'], get_query_var( 's' ) );
+			$parts['title'] = sprintf( $l10n['search'], get_query_var( 's' ) );
 		}
 		// front_page
 		elseif( is_front_page() ){
-			if( is_page() && $title = get_post_meta( $post->ID, 'title', 1 ) ){
-				// $title определен
+			if( is_page() && $parts['title'] = get_post_meta( $post->ID, 'title', 1 ) ){
+				// $parts['title'] определен
 			} else {
-				$title = get_bloginfo('name');
-				$after = get_bloginfo('description');
+				$parts['title'] = get_bloginfo('name');
+				$parts['after'] = get_bloginfo('description');
 			}
 		}
 		// singular
 		elseif( is_singular() || ( is_home() && ! is_front_page() ) || ( is_page() && ! is_front_page() ) ){
-			$title = get_post_meta( $post->ID, 'title', 1 ); // указанный title у записи в приоритете
+			$parts['title'] = get_post_meta( $post->ID, 'title', 1 ); // указанный title у записи в приоритете
 
-			if( ! $title ) $title = apply_filters( 'kama_meta_title_singular', '', $post );
-			if( ! $title ) $title = single_post_title( '', 0 );
+			if( ! $parts['title'] ) $parts['title'] = apply_filters( 'kama_meta_title_singular', '', $post );
+			if( ! $parts['title'] ) $parts['title'] = single_post_title( '', 0 );
 
 			if( $cpage = get_query_var('cpage') )
 				$parts['prev'] = sprintf( $l10n['compage'], $cpage );
 		}
 		// post_type_archive
 		elseif( is_post_type_archive() ){
-			$title = post_type_archive_title('', 0 );
-			$after = 'blog_name';
+			$parts['title'] = post_type_archive_title('', 0 );
+			$parts['after'] = 'blog_name';
 		}
 		// taxonomy
 		elseif( is_category() || is_tag() || is_tax() ){
 			$term = get_queried_object();
 
-			$title = get_term_meta( $term->term_id, 'title', 1 );
+			$parts['title'] = get_term_meta( $term->term_id, 'title', 1 );
 
-			if( ! $title ){
-				$title = single_term_title('', 0 );
+			if( ! $parts['title'] ){
+				$parts['title'] = single_term_title('', 0 );
 
 				if( is_tax() )
 					$parts['prev'] = get_taxonomy($term->taxonomy)->labels->name;
 			}
 
-			$after = 'blog_name';
+			$parts['after'] = 'blog_name';
 		}
 		// author posts archive
 		elseif( is_author() ){
-			$title = sprintf( $l10n['author'], get_queried_object()->display_name );
-			$after = 'blog_name';
+			$parts['title'] = sprintf( $l10n['author'], get_queried_object()->display_name );
+			$parts['after'] = 'blog_name';
 		}
 		// date archive
 		elseif( ( get_locale() === 'ru_RU' ) && ( is_day() || is_month() || is_year() ) ){
@@ -327,28 +324,29 @@ class Kama_SEO_Tags {
 			elseif( is_month() ) $dat = "{$rus_month[ $monthnum ]} $year года";
 			elseif( is_day() )   $dat = "$day {$rus_month2[ $monthnum ]} $year года";
 
-			$title = sprintf( $l10n['archive'], $dat );
-			$after = 'blog_name';
+			$parts['title'] = sprintf( $l10n['archive'], $dat );
+			$parts['after'] = 'blog_name';
 		}
 		// other archives
 		else {
-			$title = get_the_archive_title();
-			$after = 'blog_name';
+			$parts['title'] = get_the_archive_title();
+			$parts['after'] = 'blog_name';
 		}
 
-		// номера страниц для пагинации и деления записи
+		// pagination
 		$pagenum = get_query_var('paged') ?: get_query_var('page');
-		if( $pagenum )
+		if( $pagenum && ! is_404() )
 			$parts['paged'] = sprintf( $l10n['paged'], $pagenum );
 
-		// позволяет фильтровать title как угодно. Сам заголово
+		if( 'blog_name' === $parts['after'] )
+			$parts['after'] = $add_blog_name ? get_bloginfo('name') : '';
+
+		// позволяет фильтровать title как угодно. Сам заголовок
 		// $parts содержит массив с элементами: prev - текст до, title - заголовок, after - текст после
 		$parts = apply_filters( 'kama_meta_title_parts', $parts, $l10n );
 
-		if( 'blog_name' === $after )
-			$after = $add_blog_name ? get_bloginfo('name') : '';
-
-		$title = implode( ' ' . trim( $sep ) . ' ', array_filter( $parts ) );
+		$part_sep = ' ' . trim( $sep ) . ' ';
+		$title = implode( $part_sep, array_filter( $parts ) );
 
 		$title = apply_filters( 'kama_meta_title', $title, $parts );
 

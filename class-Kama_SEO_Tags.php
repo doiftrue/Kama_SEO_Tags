@@ -4,9 +4,11 @@
  * Simple SEO class for WordPress to create page metatags:
  * title, description, robots, keywords, Open Graph.
  *
+ * IMPORTANT! Since version 1.7.0 robots code logic was chenged. Chenge your code after update!
+ *
  * @author Kama
  *
- * @version 1.6.2
+ * @version 1.7.0
  */
 class Kama_SEO_Tags {
 
@@ -15,6 +17,9 @@ class Kama_SEO_Tags {
 		// remove basic title call
 		remove_action( 'wp_head', '_wp_render_title_tag', 1 );
 		add_action( 'wp_head', [ __CLASS__, 'render_seo_tags' ], 1 );
+
+		// WP 5.7+
+		add_filter( 'wp_robots', [ __CLASS__, 'wp_robots_callback' ] );
 	}
 
 	static function render_seo_tags(){
@@ -24,8 +29,6 @@ class Kama_SEO_Tags {
 
 		echo self::meta_description();
 		echo self::meta_keywords();
-		echo self::meta_robots('cpage');
-
 		echo self::og_meta(); // Open Graph, twitter данные
 	}
 
@@ -38,8 +41,8 @@ class Kama_SEO_Tags {
 
 		$obj = get_queried_object();
 
-		if( isset($obj->post_type) )   $post = $obj;
-		elseif( isset($obj->term_id) ) $term = $obj;
+		if( isset( $obj->post_type ) )   $post = $obj;
+		elseif( isset( $obj->term_id ) ) $term = $obj;
 
 		$is_post = isset( $post );
 		$is_term = isset( $term );
@@ -57,8 +60,9 @@ class Kama_SEO_Tags {
 
 		if( $is_post ) $pageurl = get_permalink( $post );
 		if( $is_term ) $pageurl = get_term_link( $term );
-		if( !empty($pageurl) )
-			$els['og:url'] = $pageurl;
+
+		if( ! empty( $pageurl ) )
+			$els['og:url'] = ( '/' === $pageurl[0] ? home_url( $pageurl ) : $pageurl );
 
 		/**
 		 * Allow to disable `article:section` property.
@@ -193,7 +197,7 @@ class Kama_SEO_Tags {
 		$els['twitter:card'] = 'summary';
 		$els['twitter:title'] = $els['og:title'];
 		$els['twitter:description'] = $els['og:description'];
-		if( !empty($els['og:image']) )
+		if( ! empty( $els['og:image'] ) )
 			$els['twitter:image'] = $els['og:image'];
 
 		/**
@@ -435,56 +439,40 @@ class Kama_SEO_Tags {
 	}
 
 	/**
-	 * Метатег robots.
+	 * Wrpper for WP Robots API introduced in WP 5.7+.
 	 *
-	 * Чтобы задать свои атрибуты метатега robots записи, создайте произвольное поле с ключом `robots`
-	 * и значением в нём, например: `noindex,nofollow`.
+	 * Must be used on hook `wp_robots`.
 	 *
-	 * @param string|array $allow_callbacks Какие типы страниц нужно индексировать (через запятую):
-	 *                                      cpage, is_category, is_tag, is_tax, is_author, is_year, is_month,
-	 *                                      is_attachment, is_day, is_search, is_feed, is_post_type_archive, is_paged
-	 *                                      (можно указать любые php функции в виде строки)
-	 *                                      cpage - страницы комментариев.
-	 * @param string $robots                Как закрывать индексацию: noindex,nofollow.
-	 *
-	 * @return string
+	 * @param array $robots
 	 */
-	static function meta_robots( $allow_callbacks = null ){
-		global $post;
-
-		if( ( is_home() || is_front_page() ) && ! is_paged() )
-			return '';
+	static function wp_robots_callback( $robots ){
 
 		if( is_singular() ){
-			$robots = get_post_meta( $post->ID, 'robots', true );
+			$robots_str = get_post_meta( get_queried_object_id(), 'robots', true );
 		}
-		else {
+		elseif( is_tax() || is_category() || is_tag() ){
+			$robots_str = get_term_meta( get_queried_object_id(), 'robots', true );
+		}
 
-			if( is_tax() || is_category() || is_tag() )
-				$robots = get_term_meta( $post->ID, 'robots', true );
+		if( ! empty( $robots_str ) ){
 
-			if( empty($robots) ){
+			// split by spece or comma
+			$robots_parts = preg_split( '/(?<!:)[\s,]+/', $robots_str, -1, PREG_SPLIT_NO_EMPTY );
 
-				$robots = 'noindex,nofollow';
+			foreach( $robots_parts as $directive ){
 
-				if( null === $allow_callbacks )
-					$allow_callbacks = [ 'cpage', 'is_attachment', 'is_category', 'is_tag', 'is_tax', 'is_paged', 'is_post_type_archive' ];
-
-				// open
-				foreach( wp_parse_list( $allow_callbacks ) as $type ){
-
-					if( 'cpage' === $type && strpos($_SERVER['REQUEST_URI'], '/comment-page') )
-						$robots = '';
-					elseif( function_exists($type) && $type() )
-						$robots = '';
+				// for max-snippet:2
+				if( strpos( $directive, ':' ) ){
+					list( $key, $value ) = explode( ':', $directive );
+					$robots[ $key ] = $value;
+				}
+				else {
+					$robots[ $directive ] = true;
 				}
 			}
 		}
 
-		$robots = apply_filters( 'kama_meta_robots', $robots );
-		$robots = apply_filters( 'kama_meta_robots_close', $robots ); // backcompat
-
-		return $robots ? "<meta name=\"robots\" content=\"$robots\" />\n" : '';
+		return $robots;
 	}
 
 	/**
@@ -510,7 +498,7 @@ class Kama_SEO_Tags {
 			$out = get_post_meta( $post->ID, 'keywords', true );
 
 			// для постов указываем ключами метки и категории, если не указаны ключи в произвольном поле
-			if( ! $out && $post->post_type == 'post' ){
+			if( ! $out && $post->post_type === 'post' ){
 				$res = wp_get_object_terms( $post->ID, [ 'post_tag', 'category' ], [ 'orderby' => 'none' ] ); // получаем категории и метки
 
 				if( $res && ! is_wp_error($res) )
@@ -524,7 +512,7 @@ class Kama_SEO_Tags {
 			$term = get_queried_object();
 
 			// wp 4.4
-			if( function_exists('get_term_meta') ){
+			if( function_exists('get_term_meta') && $term ){
 				$out = get_term_meta( $term->term_id, 'keywords', true );
 			}
 			else{

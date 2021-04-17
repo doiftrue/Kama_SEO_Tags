@@ -9,7 +9,7 @@
  *
  * @author Kama
  *
- * @version 1.9.0
+ * @version 1.9.1
  */
 class Kama_SEO_Tags {
 
@@ -383,11 +383,13 @@ class Kama_SEO_Tags {
 	 * Use `meta_description` meta-field to set description for any terms.
 	 * Or use default `description` field of a term.
 	 *
+	 * @param string $out_type To call this function directly.
+	 *
 	 * @return string Description.
 	 */
-	static function meta_description( $outtype = 'return_result' ){
+	static function meta_description( $out_type = 'return_result' ){
 
-		$echo_result = ( 'return_result' !== $outtype );
+		$echo_result = ( 'return_result' !== $out_type );
 
 		static $cache = null;
 		if( isset( $cache ) ){
@@ -450,6 +452,11 @@ class Kama_SEO_Tags {
 			}
 		}
 
+		$desc = str_replace( [ "\n", "\r" ], ' ', $desc );
+
+		// remove shortcodes, but leave markdown [foo](URL)
+		$desc = preg_replace( '~\[[^\]]+\](?!\()~', '', $desc );
+
 		/**
 		 * Allow change or set the meta description.
 		 *
@@ -459,11 +466,6 @@ class Kama_SEO_Tags {
 		 * @param int    $maxchar     How many characters leave after cut.
 		 */
 		$desc = apply_filters( 'kama_meta_description', $desc );
-
-		$desc = str_replace( [ "\n", "\r" ], ' ', $desc );
-
-		// remove shortcodes, but leave markdown [foo](URL)
-		$desc = preg_replace( '~\[[^\]]+\](?!\()~', '', $desc );
 
 		/**
 		 * Allow to specify is the meta description need to be cutted.

@@ -5,27 +5,27 @@
  * title, description, robots, keywords, Open Graph.
  *
  * IMPORTANT! Since version 1.7.0 robots code logic was chenged. Chenge your code after update!
+ * IMPORTANT! Since version 1.8.0 title code logic was chenged. Chenge your code after update!
  *
  * @author Kama
  *
- * @version 1.7.0
+ * @version 1.8.0
  */
 class Kama_SEO_Tags {
 
 	static function init(){
 
-		// remove basic title call
-		remove_action( 'wp_head', '_wp_render_title_tag', 1 );
-		add_action( 'wp_head', [ __CLASS__, 'render_seo_tags' ], 1 );
+		// force WP document_title function to run
+		add_theme_support( 'title-tag' );
+		add_filter( 'pre_get_document_title', [ __CLASS__, 'meta_title' ], 1 );
 
 		// WP 5.7+
 		add_filter( 'wp_robots', [ __CLASS__, 'wp_robots_callback' ] );
+
+		add_action( 'wp_head', [ __CLASS__, 'render_seo_tags' ], 1 );
 	}
 
 	static function render_seo_tags(){
-		//remove_theme_support( 'title-tag' ); // не обязательно
-
-		echo '<title>'. self::meta_title( ' — ' ) .'</title>'."\n\n";
 
 		echo self::meta_description();
 		echo self::meta_keywords();
@@ -47,7 +47,7 @@ class Kama_SEO_Tags {
 		$is_post = isset( $post );
 		$is_term = isset( $term );
 
-		$title = self::meta_title( '–' );
+		$title = self::meta_title();
 		$desc  = preg_replace( '/^.+content="([^"]*)".*$/s', '$1', self::meta_description() );
 
 		// Open Graph
@@ -227,26 +227,22 @@ class Kama_SEO_Tags {
 	}
 
 	/**
-	 * Выводит заголовок страницы <title>
+	 * Generate string to show as document title.
 	 *
-	 * Для меток и категорий указывается в настройках, в описании: [title=Заголовок].
-	 * Для записей, если нужно, чтобы заголовок страницы отличался от заголовка записи,
-	 * создайте произвольное поле title и впишите туда произвольный заголовок.
+	 * For posts and taxonomies specific title can be specified as metadata with name `title`.	 *
 	 *
-	 * @param string     $sep            Separator.
-	 * @param true|false $add_blog_name  Whether to add blog name at the end of titles of archive pages.
+	 * @param string $title `pre_get_document_title` passed value.
+	 *
+	 * @return string
 	 */
-	static function meta_title( $sep = '»', $add_blog_name = true ){
+	static function meta_title( $title = '' ){
+		global $post;
+
+		// support for `pre_get_document_title` hook.
+		if( $title )
+			return $title;
 
 		static $cache; if( $cache ) return $cache;
-
-		// Support for wp_get_document_title() function hook
-		$title = apply_filters( 'pre_get_document_title', '' );
-		if ( ! empty( $title ) ) {
-			return $title;
-		}
-
-		global $post;
 
 		$l10n = apply_filters( 'kama_meta_title_l10n', [
 			'404'     => 'Ошибка 404: такой страницы не существует',
@@ -260,7 +256,7 @@ class Kama_SEO_Tags {
 		$parts = [
 			'prev'  => '',
 			'title' => '',
-			'paged' => '',
+			'page'  => '',
 			'after' => '',
 		];
 
@@ -277,8 +273,8 @@ class Kama_SEO_Tags {
 			if( is_page() && $parts['title'] = get_post_meta( $post->ID, 'title', 1 ) ){
 				// $parts['title'] определен
 			} else {
-				$parts['title'] = get_bloginfo('name');
-				$parts['after'] = get_bloginfo('description');
+				$parts['title'] = get_bloginfo( 'name', 'display' );
+				$parts['after'] = '{{description}}';
 			}
 		}
 		// singular
@@ -294,7 +290,7 @@ class Kama_SEO_Tags {
 		// post_type_archive
 		elseif( is_post_type_archive() ){
 			$parts['title'] = post_type_archive_title('', 0 );
-			$parts['after'] = 'blog_name';
+			$parts['after'] = '{{blog_name}}';
 		}
 		// taxonomy
 		elseif( is_category() || is_tag() || is_tax() ){
@@ -306,20 +302,26 @@ class Kama_SEO_Tags {
 				$parts['title'] = single_term_title('', 0 );
 
 				if( is_tax() )
-					$parts['prev'] = get_taxonomy($term->taxonomy)->labels->name;
+					$parts['prev'] = get_taxonomy( $term->taxonomy )->labels->name;
 			}
 
-			$parts['after'] = 'blog_name';
+			$parts['after'] = '{{blog_name}}';
 		}
 		// author posts archive
 		elseif( is_author() ){
 			$parts['title'] = sprintf( $l10n['author'], get_queried_object()->display_name );
-			$parts['after'] = 'blog_name';
+			$parts['after'] = '{{blog_name}}';
 		}
 		// date archive
 		elseif( ( get_locale() === 'ru_RU' ) && ( is_day() || is_month() || is_year() ) ){
-			$rus_month = [ '', 'январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь' ];
-			$rus_month2 = [ '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря' ];
+			$rus_month = [
+				'', 'январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
+				'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'
+			];
+			$rus_month2 = [
+				'', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+				'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+			];
 			$year     = get_query_var('year');
 			$monthnum = get_query_var('monthnum');
 			$day      = get_query_var('day');
@@ -329,33 +331,48 @@ class Kama_SEO_Tags {
 			elseif( is_day() )   $dat = "$day {$rus_month2[ $monthnum ]} $year года";
 
 			$parts['title'] = sprintf( $l10n['archive'], $dat );
-			$parts['after'] = 'blog_name';
+			$parts['after'] = '{{blog_name}}';
 		}
 		// other archives
 		else {
 			$parts['title'] = get_the_archive_title();
-			$parts['after'] = 'blog_name';
+			$parts['after'] = '{{blog_name}}';
 		}
 
 		// pagination
-		$pagenum = get_query_var('paged') ?: get_query_var('page');
-		if( $pagenum && ! is_404() )
-			$parts['paged'] = sprintf( $l10n['paged'], $pagenum );
+		$pagenum = get_query_var( 'paged' ) ?: get_query_var( 'page' );
+		if( $pagenum && ! is_404() ){
+			$parts['page'] = sprintf( $l10n['paged'], $pagenum );
+		}
 
-		if( 'blog_name' === $parts['after'] )
-			$parts['after'] = $add_blog_name ? get_bloginfo('name') : '';
-
-		// позволяет фильтровать title как угодно. Сам заголовок
-		// $parts содержит массив с элементами: prev - текст до, title - заголовок, after - текст после
+		/**
+		 * Allows to change parts of the document title.
+		 *
+		 * @param array $parts Title parts. It then will be joined.
+		 * @param array $l10n  Localisation strings.
+		 */
 		$parts = apply_filters( 'kama_meta_title_parts', $parts, $l10n );
 
-		$part_sep = ' ' . trim( $sep ) . ' ';
-		$title = implode( $part_sep, array_filter( $parts ) );
+		/** This filter is documented in wp-includes/general-template.php */
+		$parts = apply_filters( 'document_title_parts', $parts );
 
-		$title = apply_filters( 'kama_meta_title', $title, $parts );
+		// handle placeholders
+		if( '{{blog_name}}' === $parts['after'] ){
+			$parts['after'] = get_bloginfo( 'name', 'display' );
+		}
+		elseif( '{{description}}' === $parts['after'] ){
+			$parts['after'] = get_bloginfo( 'description', 'display' );
+		}
+
+		/** This filter is documented in wp-includes/general-template.php */
+		$sep = apply_filters( 'document_title_separator', ' — ' );
+
+		$title = implode( ' '. trim( $sep ) .' ', array_filter( $parts ) );
 
 		$title = wptexturize( $title );
+		$title = convert_chars( $title );
 		$title = esc_html( $title );
+		$title = capital_P_dangit( $title );
 
 		return $cache = $title;
 	}

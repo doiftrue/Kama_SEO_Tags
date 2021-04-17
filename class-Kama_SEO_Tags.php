@@ -4,12 +4,12 @@
  * Simple SEO class for WordPress to create page metatags:
  * title, description, robots, keywords, Open Graph.
  *
- * IMPORTANT! Since version 1.7.0 robots code logic was chenged. Chenge your code after update!
- * IMPORTANT! Since version 1.8.0 title code logic was chenged. Chenge your code after update!
+ * IMPORTANT! Since version 1.7.0 robots code logic was chenged. Changed your code after update!
+ * IMPORTANT! Since version 1.8.0 title code logic was chenged. Changed your code after update!
  *
  * @author Kama
  *
- * @version 1.8.0
+ * @version 1.9.0
  */
 class Kama_SEO_Tags {
 
@@ -19,17 +19,12 @@ class Kama_SEO_Tags {
 		add_theme_support( 'title-tag' );
 		add_filter( 'pre_get_document_title', [ __CLASS__, 'meta_title' ], 1 );
 
+		add_action( 'wp_head', [ __CLASS__, 'meta_description' ], 1 );
+		add_action( 'wp_head', [ __CLASS__, 'meta_keywords' ], 1 );
+		add_action( 'wp_head', [ __CLASS__, 'og_meta' ], 1 ); // Open Graph, twitter данные
+
 		// WP 5.7+
 		add_filter( 'wp_robots', [ __CLASS__, 'wp_robots_callback' ] );
-
-		add_action( 'wp_head', [ __CLASS__, 'render_seo_tags' ], 1 );
-	}
-
-	static function render_seo_tags(){
-
-		echo self::meta_description();
-		echo self::meta_keywords();
-		echo self::og_meta(); // Open Graph, twitter данные
 	}
 
 	/**
@@ -48,7 +43,7 @@ class Kama_SEO_Tags {
 		$is_term = isset( $term );
 
 		$title = self::meta_title();
-		$desc  = preg_replace( '/^.+content="([^"]*)".*$/s', '$1', self::meta_description() );
+		$desc = preg_replace( '/^.+content="([^"]*)".*$/s', '$1', self::meta_description('return_result') );
 
 		// Open Graph
 		$els = [];
@@ -223,7 +218,7 @@ class Kama_SEO_Tags {
 		 */
 		$els = apply_filters( 'kama_og_meta_elements', $els );
 
-		return "\n\n". implode("\n", $els ) ."\n\n";
+		echo "\n\n". implode("\n", $els ) ."\n\n";
 	}
 
 	/**
@@ -378,81 +373,135 @@ class Kama_SEO_Tags {
 	}
 
 	/**
-	 * Выводит метатег description.
+	 * Display `description` metatag.
 	 *
-	 * Для элементов таксономий: метаполе description или в описании такой шоткод [description = текст описания]
-	 * У постов сначала проверяется, метаполе description, или цитата, или начальная часть контента.
-	 * Цитата или контент обрезаются до указанного в $maxchar символов.
+	 * Must be used on hook `wp_head`.
 	 *
-	 * @param string $home_description Указывается описание для главной страницы сайта.
-	 * @param int    $maxchar          Максимальная длина описания (в символах).
+	 * Use `description` meta-field to set description for any posts.
+	 * It also work for page setted as front page.
+	 *
+	 * Use `meta_description` meta-field to set description for any terms.
+	 * Or use default `description` field of a term.
+	 *
+	 * @return string Description.
 	 */
-	static function meta_description( $home_description = '', $maxchar = 260 ){
-		static $cache; if( $cache ) return $cache;
+	static function meta_description( $outtype = 'return_result' ){
+
+		$echo_result = ( 'return_result' !== $outtype );
+
+		static $cache = null;
+		if( isset( $cache ) ){
+
+			if( $echo_result )
+				echo $cache;
+
+			return $cache;
+		}
 
 		global $post;
 
-		$cut   = true;
+		$need_cut = true;
 		$desc  = '';
 
 		// front
 		if( is_front_page() ){
+
 			// когда для главной установлена страница
-			if( is_page() && $desc = get_post_meta($post->ID, 'description', true )  ){
-				$cut = false;
+			if( is_page() ){
+				$desc = get_post_meta( $post->ID, 'description', true );
+				$need_cut = false;
 			}
 
-			if( ! $desc )
-				$desc = $home_description ?: get_bloginfo( 'description', 'display' );
-		}
-		// singular
-		elseif( is_singular() ){
-			if( $desc = get_post_meta($post->ID, 'description', true ) )
-				$cut = false;
+			if( ! $desc ){
 
-			if( ! $desc ) $desc = $post->post_excerpt ?: $post->post_content;
+				/**
+				 * Allow to change front_page meta description.
+				 *
+				 * @param string $home_description
+				 */
+				$desc = apply_filters( 'home_meta_description', get_bloginfo( 'description', 'display' ) );
+			}
+		}
+		// any post
+		elseif( is_singular() ){
+
+			if( $desc = get_post_meta( $post->ID, 'description', true ) ){
+				$need_cut = false;
+			}
+
+			if( ! $desc ){
+				$desc = $post->post_excerpt ?: $post->post_content;
+			}
 
 			$desc = trim( strip_tags( $desc ) );
 		}
-		// term
-		elseif( is_category() || is_tag() || is_tax() ){
-			$term = get_queried_object();
+		// any term (taxonomy element)
+		elseif( ( $term = get_queried_object() ) && ! empty( $term->term_id ) ){
 
 			$desc = get_term_meta( $term->term_id, 'meta_description', true );
+
 			if( ! $desc )
 				$desc = get_term_meta( $term->term_id, 'description', true );
 
-			$cut = false;
+			$need_cut = false;
 			if( ! $desc && $term->description ){
 				$desc = strip_tags( $term->description );
-				$cut = true;
+				$need_cut = true;
 			}
 		}
 
-		$origin_desc = $desc;
+		/**
+		 * Allow change or set the meta description.
+		 *
+		 * @param string $desc        Current description.
+		 * @param string $origin_desc Description before cut.
+		 * @param bool   $need_cut    Is need to cut?
+		 * @param int    $maxchar     How many characters leave after cut.
+		 */
+		$desc = apply_filters( 'kama_meta_description', $desc );
 
-		if( $desc = apply_filters( 'kama_meta_description_pre', $desc ) ){
+		$desc = str_replace( [ "\n", "\r" ], ' ', $desc );
 
-			$desc = str_replace( array("\n", "\r"), ' ', $desc );
-			$desc = preg_replace( '~\[[^\]]+\](?!\()~', '', $desc ); // удаляем шоткоды. Оставляем маркдаун [foo](URL)
+		// remove shortcodes, but leave markdown [foo](URL)
+		$desc = preg_replace( '~\[[^\]]+\](?!\()~', '', $desc );
 
-			if( $cut ){
-				$char = mb_strlen( $desc );
-				if( $char > $maxchar ){
-					$desc     = mb_substr( $desc, 0, $maxchar );
-					$words    = explode(' ', $desc );
-					$maxwords = count($words) - 1; // убираем последнее слово, оно в 90% случаев неполное
-					$desc     = join(' ', array_slice($words, 0, $maxwords)).' ...';
-				}
+		/**
+		 * Allow to specify is the meta description need to be cutted.
+		 *
+		 * @param bool $need_cut
+		 */
+		$need_cut = apply_filters( 'kama_meta_description__need_cut', $need_cut );
+
+		if( $need_cut ){
+
+			/**
+			 * Allow set max length of the meta description.
+			 *
+			 * @param int $maxchar
+			 */
+			$maxchar = apply_filters( 'kama_meta_description__maxchar', 260 );
+
+			$char = mb_strlen( $desc );
+
+			if( $char > $maxchar ){
+				$desc = mb_substr( $desc, 0, $maxchar );
+				$words = explode( ' ', $desc );
+				$maxwords = count( $words ) - 1; // remove last word, it incomplete in 90% cases
+				$desc = implode( ' ', array_slice( $words, 0, $maxwords ) ) . ' ...';
 			}
-
-			$desc = preg_replace( '/\s+/s', ' ', $desc );
 		}
 
-		if( $desc = apply_filters( 'kama_meta_description', $desc, $origin_desc, $cut, $maxchar ) )
-			return $cache = '<meta name="description" content="'. esc_attr( trim($desc) ) .'" />'."\n";
+		// remove multi-space
+		$desc = preg_replace( '/\s+/s', ' ', $desc );
 
-		return $cache = '';
+		$cache = $desc
+			? sprintf( "<meta name=\"description\" content=\"%s\" />\n", esc_attr( trim( $desc ) ) )
+			: '';
+
+		if( $echo_result )
+			echo $cache;
+
+		return $cache;
 	}
 
 	/**
@@ -541,7 +590,7 @@ class Kama_SEO_Tags {
 		if( $out && $def_keywords )
 			$out = "$out, $def_keywords";
 
-		return $out ? "<meta name=\"keywords\" content=\"$out\" />\n" : '';
+		echo $out ? "<meta name=\"keywords\" content=\"$out\" />\n" : '';
 	}
 
 }

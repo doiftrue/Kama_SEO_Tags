@@ -9,7 +9,7 @@
  *
  * @author Kama
  *
- * @version 1.9.1
+ * @version 1.9.2
  */
 class Kama_SEO_Tags {
 
@@ -538,6 +538,10 @@ class Kama_SEO_Tags {
 					$robots[ $directive ] = true;
 				}
 			}
+		}
+
+		if( ! empty( $robots['none'] ) || ! empty( $robots['noindex'] ) ){
+			unset( $robots['max-image-preview'] );
 		}
 
 		return $robots;

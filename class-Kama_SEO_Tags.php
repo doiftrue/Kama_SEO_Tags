@@ -24,7 +24,7 @@ class Kama_SEO_Tags {
 		add_action( 'wp_head', [ __CLASS__, 'og_meta' ], 1 ); // Open Graph, twitter данные
 
 		// WP 5.7+
-		add_filter( 'wp_robots', [ __CLASS__, 'wp_robots_callback' ] );
+		add_filter( 'wp_robots', [ __CLASS__, 'wp_robots_callback' ], 11 );
 	}
 
 	/**

@@ -9,7 +9,7 @@
  *
  * @author Kama
  *
- * @version 1.9.2
+ * @version 1.9.3
  */
 class Kama_SEO_Tags {
 
@@ -76,8 +76,6 @@ class Kama_SEO_Tags {
 
 		// image
 		if( 'image' ){
-
-			$image_url = null;
 
 			/**
 			 * Allow to change `og:image` `og:image:width` `og:image:height` values.
@@ -165,25 +163,24 @@ class Kama_SEO_Tags {
 
 					if( $image ){
 
-						list( $image_url, $image_width, $image_height, $image_alt, $image_mime ) = array_merge(
+						list( $els['og:image[1]'], $els['og:image[1]:width'], $els['og:image[1]:height'], $image_alt, $image_mime ) = array_merge(
 							array_slice( image_downsize( $image->ID, 'full' ), 0, 3 ),
 							[ $image->post_excerpt, $image->post_mime_type ]
 						);
+
+						list( $els['og:image[2]'], $els['og:image[2]:width'], $els['og:image[2]:height'] ) = array_slice( image_downsize( $image->ID, 'thumbnail' ), 0, 3 );
 					}
 				}
 				elseif( is_array( $image ) )
-					list( $image_url, $image_width, $image_height ) = $image;
+					list( $els['og:image[1]'], $els['og:image[1]:width'], $els['og:image[1]:height'] ) = $image;
 				else
-					$image_url = $image;
+					$els['og:image[1]'] = $image;
 			}
 
-			if( $image_url ){
+			if( ! empty( $els['og:image[1]'] ) ){
 
-				$els['og:image'] = $image_url;
-				if( ! empty( $image_width ) )  $els['og:image:width']  = (int) $image_width;
-				if( ! empty( $image_height ) ) $els['og:image:height'] = (int) $image_height;
-				if( ! empty( $image_alt ) )    $els['og:image:alt'] = sanitize_text_field( $image_alt );
-				if( ! empty( $image_mime ) )   $els['og:image:type'] = $image_mime;
+				if( ! empty( $image_alt ) )  $els['og:image[1]:alt'] = sanitize_text_field( $image_alt );
+				if( ! empty( $image_mime ) ) $els['og:image[1]:type'] = $image_mime;
 			}
 
 		}
@@ -192,8 +189,9 @@ class Kama_SEO_Tags {
 		$els['twitter:card'] = 'summary';
 		$els['twitter:title'] = $els['og:title'];
 		$els['twitter:description'] = $els['og:description'];
-		if( ! empty( $els['og:image'] ) )
-			$els['twitter:image'] = $els['og:image'];
+		if( ! empty( $els['og:image[1]'] ) ){
+			$els['twitter:image'] = $els['og:image[1]'];
+		}
 
 		/**
 		 * Allows change values of og / twitter meta properties.
@@ -202,23 +200,29 @@ class Kama_SEO_Tags {
 		 */
 		$els = apply_filters( 'kama_og_meta_elements_values', $els );
 		$els = array_filter( $els );
+		ksort( $els );
 
-		foreach( $els as $key => & $val ){
-			if( 0 === strpos($key,'twitter:') )
-				$val = '<meta name="'. $key .'" content="'. esc_attr($val) .'" />';
+		// make <meta> tags
+		$metas = [];
+		foreach( $els as $key => $val ){
+
+			// og:image[1] > og:image  ||  og:image[1]:width > og:image:width
+			$fixed_key = preg_replace( '/\[\d\]/', '', $key );
+
+			if( 0 === strpos( $key, 'twitter:' ) )
+				$metas[] = '<meta name="' . $fixed_key . '" content="' . esc_attr( $val ) . '" />';
 			else
-				$val = '<meta property="'. $key .'" content="'. esc_attr($val) .'" />';
+				$metas[] = '<meta property="' . $fixed_key . '" content="' . esc_attr( $val ) . '" />';
 		}
-		unset( $val );
 
 		/**
 		 * Filter resulting properties. Allows to add or remove any og/twitter properties.
 		 *
 		 * @param array  $els
 		 */
-		$els = apply_filters( 'kama_og_meta_elements', $els );
+		$metas = apply_filters( 'kama_og_meta_elements', $metas, $els );
 
-		echo "\n\n". implode("\n", $els ) ."\n\n";
+		echo "\n\n". implode( "\n", $metas ) ."\n\n";
 	}
 
 	/**

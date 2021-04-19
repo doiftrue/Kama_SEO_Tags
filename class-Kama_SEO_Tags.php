@@ -163,24 +163,39 @@ class Kama_SEO_Tags {
 
 					if( $image ){
 
-						list( $els['og:image[1]'], $els['og:image[1]:width'], $els['og:image[1]:height'], $image_alt, $image_mime ) = array_merge(
+						list(
+							$els['og:image[1]'],
+							$els['og:image[1]:width'],
+							$els['og:image[1]:height'],
+							$els['og:image[1]:alt'],
+							$els['og:image[1]:type']
+						) = array_merge(
 							array_slice( image_downsize( $image->ID, 'full' ), 0, 3 ),
 							[ $image->post_excerpt, $image->post_mime_type ]
 						);
 
-						list( $els['og:image[2]'], $els['og:image[2]:width'], $els['og:image[2]:height'] ) = array_slice( image_downsize( $image->ID, 'thumbnail' ), 0, 3 );
+						if( ! $els['og:image[1]:alt'] )
+							unset( $els['og:image[1]:alt'] );
+
+						// thumbnail
+						list(
+							$els['og:image[2]'],
+							$els['og:image[2]:width'],
+							$els['og:image[2]:height']
+						) = array_slice( image_downsize( $image->ID, 'thumbnail' ), 0, 3 );
 					}
 				}
-				elseif( is_array( $image ) )
-					list( $els['og:image[1]'], $els['og:image[1]:width'], $els['og:image[1]:height'] ) = $image;
-				else
+				elseif( is_array( $image ) ){
+					list(
+						$els['og:image[1]'],
+						$els['og:image[1]:width'],
+						$els['og:image[1]:height']
+					) = $image;
+				}
+				else{
 					$els['og:image[1]'] = $image;
-			}
+				}
 
-			if( ! empty( $els['og:image[1]'] ) ){
-
-				if( ! empty( $image_alt ) )  $els['og:image[1]:alt'] = sanitize_text_field( $image_alt );
-				if( ! empty( $image_mime ) ) $els['og:image[1]:type'] = $image_mime;
 			}
 
 		}

@@ -9,7 +9,7 @@
  *
  * @author Kama
  *
- * @version 1.9.3
+ * @version 1.9.4
  */
 class Kama_SEO_Tags {
 
@@ -43,7 +43,7 @@ class Kama_SEO_Tags {
 		$is_term = isset( $term );
 
 		$title = self::meta_title();
-		$desc = preg_replace( '/^.+content="([^"]*)".*$/s', '$1', self::meta_description('return_result') );
+		$desc = preg_replace( '/^.+content="([^"]*)".*$/s', '$1', self::meta_description() );
 
 		// Open Graph
 		$els = [];
@@ -402,13 +402,12 @@ class Kama_SEO_Tags {
 	 * Use `meta_description` meta-field to set description for any terms.
 	 * Or use default `description` field of a term.
 	 *
-	 * @param string $out_type To call this function directly.
-	 *
 	 * @return string Description.
 	 */
-	static function meta_description( $out_type = 'return_result' ){
+	static function meta_description(){
 
-		$echo_result = ( 'return_result' !== $out_type );
+		// called from `wp_head` hook
+		$echo_result = ( func_num_args() === 1 );
 
 		static $cache = null;
 		if( isset( $cache ) ){
@@ -421,8 +420,8 @@ class Kama_SEO_Tags {
 
 		global $post;
 
+		$desc = '';
 		$need_cut = true;
-		$desc  = '';
 
 		// front
 		if( is_front_page() ){

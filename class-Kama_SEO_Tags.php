@@ -9,7 +9,7 @@
  *
  * @author Kama
  *
- * @version 1.9.4
+ * @version 1.9.5
  */
 class Kama_SEO_Tags {
 
@@ -53,11 +53,32 @@ class Kama_SEO_Tags {
 		$els['og:description'] = $desc;
 		$els['og:type']        = is_singular() ? 'article' : 'object';
 
-		if( $is_post ) $pageurl = get_permalink( $post );
-		if( $is_term ) $pageurl = get_term_link( $term );
+		// og:url
+		if( 'url' ){
 
-		if( ! empty( $pageurl ) )
-			$els['og:url'] = ( '/' === $pageurl[0] ? home_url( $pageurl ) : $pageurl );
+			if( $is_post ) $url = get_permalink( $post );
+			if( $is_term ) $url = get_term_link( $term );
+
+			if( ! empty( $url ) ){
+
+				$els['og:url'] = $url;
+
+				// relative (not allowed)
+				if( '/' === $url[0] ){
+
+					// without protocol only: //domain.com/path
+					if( substr( $url, 0, 2 ) === '//' ){
+						$els['og:url'] = set_url_scheme( $url );
+					}
+					// without domain
+					else{
+						$parts = wp_parse_url( $url );
+						$els['og:url'] = home_url( $parts['path'] ) . ( isset( $parts['query'] ) ? "?{$parts['query']}" : '' );
+					}
+				}
+
+			}
+		}
 
 		/**
 		 * Allow to disable `article:section` property.
@@ -74,7 +95,7 @@ class Kama_SEO_Tags {
 			}
 		}
 
-		// image
+		// og:image
 		if( 'image' ){
 
 			/**
@@ -86,10 +107,11 @@ class Kama_SEO_Tags {
 
 			if( ! $image ){
 
-				$attach_id_from_text__fn = function( $text ){
+				$attach_id_from_text__fn = static function( $text ){
 
 					if(
-						preg_match( '/<img +src *= *[\'"]([^\'"]+)[\'"]/', $text, $mm ) &&
+						preg_match( '/<img +src *= *[\'"]([^\'"]+)[\'"]/', $text, $mm )
+						&&
 						( '/' === $mm[1][0] || strpos($mm[1], $_SERVER['HTTP_HOST']) )
 					){
 						$name = basename( $mm[1] );

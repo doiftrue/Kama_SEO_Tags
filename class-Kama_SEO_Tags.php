@@ -7,9 +7,11 @@
  * IMPORTANT! Since version 1.7.0 robots code logic was chenged. Changed your code after update!
  * IMPORTANT! Since version 1.8.0 title code logic was chenged. Changed your code after update!
  *
+ * @see https://github.com/doiftrue/Kama_SEO_Tags
+ *
  * @author Kama
  *
- * @version 1.9.5
+ * @version 1.9.6
  */
 class Kama_SEO_Tags {
 
@@ -315,12 +317,23 @@ class Kama_SEO_Tags {
 		}
 		// singular
 		elseif( is_singular() || ( is_home() && ! is_front_page() ) || ( is_page() && ! is_front_page() ) ){
-			$parts['title'] = get_post_meta( $post->ID, 'title', 1 ); // указанный title у записи в приоритете
 
-			if( ! $parts['title'] ) $parts['title'] = apply_filters( 'kama_meta_title_singular', '', $post );
-			if( ! $parts['title'] ) $parts['title'] = single_post_title( '', 0 );
+			$parts['title'] = get_post_meta( $post->ID, 'title', 1 );
 
-			if( $cpage = get_query_var('cpage') )
+			if( ! $parts['title'] ){
+				/**
+				 * Allow to set meta title for singular type page, before the default title will be taken.
+				 *
+				 * @param string  $title
+				 * @param WP_Post $post
+				 */
+				$parts['title'] = apply_filters( 'kama_meta_title_singular', '', $post );
+			}
+
+			if( ! $parts['title'] )
+				$parts['title'] = single_post_title( '', 0 );
+
+			if( $cpage = get_query_var( 'cpage' ) )
 				$parts['prev'] = sprintf( $l10n['compage'], $cpage );
 		}
 		// post_type_archive
@@ -332,7 +345,7 @@ class Kama_SEO_Tags {
 		elseif( is_category() || is_tag() || is_tax() ){
 			$term = get_queried_object();
 
-			$parts['title'] = get_term_meta( $term->term_id, 'title', 1 );
+			$parts['title'] = $term ? get_term_meta( $term->term_id, 'title', 1 ) : '';
 
 			if( ! $parts['title'] ){
 				$parts['title'] = single_term_title('', 0 );

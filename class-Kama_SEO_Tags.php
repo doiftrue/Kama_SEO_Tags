@@ -11,7 +11,7 @@
  *
  * @author Kama
  *
- * @version 1.9.6
+ * @version 1.9.7
  */
 class Kama_SEO_Tags {
 
@@ -308,9 +308,11 @@ class Kama_SEO_Tags {
 		}
 		// front_page
 		elseif( is_front_page() ){
+
 			if( is_page() && $parts['title'] = get_post_meta( $post->ID, 'title', 1 ) ){
-				// $parts['title'] определен
-			} else {
+				// $parts['title'] defined
+			}
+			else {
 				$parts['title'] = get_bloginfo( 'name', 'display' );
 				$parts['after'] = '{{description}}';
 			}
@@ -601,55 +603,68 @@ class Kama_SEO_Tags {
 	}
 
 	/**
-	 * Генерирует метатег keywords для head части старницы.
+	 * Generate `<meta name="keywords">` meta-tag fore <head> part of the page.
 	 *
-	 * Чтобы задать свои keywords для записи, создайте произвольное поле keywords и впишите в значения необходимые ключевые слова.
-	 * Для постов (post) ключевые слова генерируются из меток и названия категорий, если не указано произвольное поле keywords.
+	 * To set Your own keywords for post, create meta-field with key `keywords`
+	 * and set the keyword to the value.
 	 *
-	 * Для меток, категорий и произвольных таксономий, ключевые слова указываются в описании, в шоткоде: [ keywords=слово1, слово2, слово3 ]
+	 * Default keyword for a post generates from post tags nemes and categories names.
+	 * If the `keywords` meta-field is not specified.
 	 *
-	 * @ $home_keywords: Для главной, ключевые слова указываются в первом параметре: meta_keywords( 'слово1, слово2, слово3' );
-	 * @ $def_keywords: сквозные ключевые слова - укажем и они будут прибавляться к остальным на всех страницах
+	 * You can specify the keywords for the any taxonomy element (term) using shortcode
+	 * `[keywords=word1, word2, word3]` in the description field.
+	 *
+	 * @param string $home_keywords Keywords for home page. Ex: 'word1, word2, word3'
+	 * @param string $def_keywords  сквозные ключевые слова - укажем и они будут прибавляться
+	 *                              к остальным на всех страницах.
 	 */
 	static function meta_keywords( $home_keywords = '', $def_keywords = '' ){
 		global $post;
 
-		$out = '';
+		$out = [];
 
-		if ( is_front_page() ){
-			$out = $home_keywords;
+		if( is_front_page() ){
+			$out[] = $home_keywords;
 		}
 		elseif( is_singular() ){
-			$out = get_post_meta( $post->ID, 'keywords', true );
 
-			// для постов указываем ключами метки и категории, если не указаны ключи в произвольном поле
-			if( ! $out && $post->post_type === 'post' ){
-				$res = wp_get_object_terms( $post->ID, [ 'post_tag', 'category' ], [ 'orderby' => 'none' ] ); // получаем категории и метки
+			$meta_keywords = get_post_meta( $post->ID, 'keywords', true );
 
-				if( $res && ! is_wp_error($res) )
-					foreach( $res as $tag )
-						$out .= ", $tag->name";
-
-				$out = ltrim( $out, ', ' );
+			if( $meta_keywords ){
+				$out[] = $meta_keywords;
 			}
+			elseif( $post->post_type === 'post' ){
+
+				$res = wp_get_object_terms( $post->ID, [ 'post_tag', 'category' ], [ 'orderby' => 'none' ] );
+
+				if( $res && ! is_wp_error( $res ) ){
+					foreach( $res as $tag ){
+						$out[] = $tag->name;
+					}
+				}
+			}
+
 		}
-		elseif ( is_category() || is_tag() || is_tax() ){
+		elseif( is_category() || is_tag() || is_tax() ){
 			$term = get_queried_object();
 
 			// wp 4.4
-			if( function_exists('get_term_meta') && $term ){
-				$out = get_term_meta( $term->term_id, 'keywords', true );
+			if( function_exists( 'get_term_meta' ) && $term ){
+				$out[] = get_term_meta( $term->term_id, 'keywords', true );
 			}
 			else{
 				preg_match( '!\[keywords=([^\]]+)\]!iU', $term->description, $match );
-				$out = isset( $match[1] ) ? $match[1] : '';
+				$out[] = isset( $match[1] ) ? trim( $match[1] ) : '';
 			}
 		}
 
-		if( $out && $def_keywords )
-			$out = "$out, $def_keywords";
+		if( $def_keywords ){
+			$out[] = $def_keywords;
+		}
 
-		echo $out ? "<meta name=\"keywords\" content=\"$out\" />\n" : '';
+		echo $out
+			? '<meta name="keywords" content="'. implode( ', ', $out ) .'" />' . "\n"
+			: '';
 	}
 
 }

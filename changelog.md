@@ -1,3 +1,6 @@
+1.9.8 - 25-10-2021
+- Disable function wptexturize() convert_chars() for title.
+
 1.6 - 13-12-2020
 - paged becomes real part of implode.
 - `$paged` parametesr added to `kama_meta_title` hook.

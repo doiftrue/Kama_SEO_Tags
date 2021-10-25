@@ -11,7 +11,7 @@
  *
  * @author Kama
  *
- * @version 1.9.7
+ * @version 1.9.8
  */
 class Kama_SEO_Tags {
 
@@ -332,11 +332,13 @@ class Kama_SEO_Tags {
 				$parts['title'] = apply_filters( 'kama_meta_title_singular', '', $post );
 			}
 
-			if( ! $parts['title'] )
+			if( ! $parts['title'] ){
 				$parts['title'] = single_post_title( '', 0 );
+			}
 
-			if( $cpage = get_query_var( 'cpage' ) )
+			if( $cpage = get_query_var( 'cpage' ) ){
 				$parts['prev'] = sprintf( $l10n['compage'], $cpage );
+			}
 		}
 		// post_type_archive
 		elseif( is_post_type_archive() ){
@@ -416,12 +418,12 @@ class Kama_SEO_Tags {
 		}
 
 		/** This filter is documented in wp-includes/general-template.php */
-		$sep = apply_filters( 'document_title_separator', ' — ' );
+		$sep = apply_filters( 'document_title_separator', ' – ' );
 
 		$title = implode( ' '. trim( $sep ) .' ', array_filter( $parts ) );
 
-		$title = wptexturize( $title );
-		$title = convert_chars( $title );
+		//$title = wptexturize( $title );
+		//$title = convert_chars( $title );
 		$title = esc_html( $title );
 		$title = capital_P_dangit( $title );
 

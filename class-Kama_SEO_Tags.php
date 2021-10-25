@@ -187,13 +187,13 @@ class Kama_SEO_Tags {
 
 					if( $image ){
 
-						list(
+						[
 							$els['og:image[1]'],
 							$els['og:image[1]:width'],
 							$els['og:image[1]:height'],
 							$els['og:image[1]:alt'],
 							$els['og:image[1]:type']
-						) = array_merge(
+						] = array_merge(
 							array_slice( image_downsize( $image->ID, 'full' ), 0, 3 ),
 							[ $image->post_excerpt, $image->post_mime_type ]
 						);
@@ -202,19 +202,19 @@ class Kama_SEO_Tags {
 							unset( $els['og:image[1]:alt'] );
 
 						// thumbnail
-						list(
+						[
 							$els['og:image[2]'],
 							$els['og:image[2]:width'],
 							$els['og:image[2]:height']
-						) = array_slice( image_downsize( $image->ID, 'thumbnail' ), 0, 3 );
+						] = array_slice( image_downsize( $image->ID, 'thumbnail' ), 0, 3 );
 					}
 				}
 				elseif( is_array( $image ) ){
-					list(
+					[
 						$els['og:image[1]'],
 						$els['og:image[1]:width'],
 						$els['og:image[1]:height']
-					) = $image;
+					] = $image;
 				}
 				else{
 					$els['og:image[1]'] = $image;
@@ -588,7 +588,7 @@ class Kama_SEO_Tags {
 
 				// for max-snippet:2
 				if( strpos( $directive, ':' ) ){
-					list( $key, $value ) = explode( ':', $directive );
+					[ $key, $value ] = explode( ':', $directive );
 					$robots[ $key ] = $value;
 				}
 				else {
@@ -664,8 +664,15 @@ class Kama_SEO_Tags {
 			$out[] = $def_keywords;
 		}
 
+		/**
+		 * Allow to change resulting string of meta_keywords() method.
+		 *
+		 * @param string $out
+		 */
+		$out = apply_filters( 'kama_meta_keywords', implode( ', ', $out ) );
+
 		echo $out
-			? '<meta name="keywords" content="'. implode( ', ', $out ) .'" />' . "\n"
+			? '<meta name="keywords" content="'. esc_attr( $out ) .'" />' . "\n"
 			: '';
 	}
 

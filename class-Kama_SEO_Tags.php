@@ -11,7 +11,7 @@
  *
  * @author Kama
  *
- * @version 1.9.8
+ * @version 1.9.9
  */
 class Kama_SEO_Tags {
 
@@ -89,11 +89,12 @@ class Kama_SEO_Tags {
 		 */
 		if( apply_filters( 'kama_og_meta_show_article_section', true ) ){
 
-			if( is_singular() && $post_taxname =  get_object_taxonomies($post->post_type) ){
+			if( is_singular() && $post_taxname = get_object_taxonomies( $post->post_type ) ){
 
-				$post_terms = get_the_terms( $post, reset($post_taxname) );
-				if( $post_terms && $post_term = array_shift($post_terms) )
+				$post_terms = get_the_terms( $post, reset( $post_taxname ) );
+				if( $post_terms && $post_term = array_shift( $post_terms ) ){
 					$els['article:section'] = $post_term->name;
+				}
 			}
 		}
 
@@ -145,8 +146,10 @@ class Kama_SEO_Tags {
 						 */
 						if( apply_filters( 'kama_og_meta_thumb_id_find_in_content', true ) ){
 
+							$image = $attach_id_from_text__fn( $post->post_content );
+
 							// первое вложение поста
-							if( ! $image = $attach_id_from_text__fn( $post->post_content ) ) {
+							if( ! $image ) {
 
 								$attach = get_children([
 									'numberposts'    => 1,
@@ -155,8 +158,9 @@ class Kama_SEO_Tags {
 									'post_parent'    => $post->ID,
 								]);
 
-								if( $attach && $attach = array_shift( $attach ) )
+								if( $attach && $attach = array_shift( $attach ) ){
 									$image = $attach->ID;
+								}
 							}
 						}
 					}

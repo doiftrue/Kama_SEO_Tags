@@ -11,7 +11,7 @@
  *
  * @author Kama
  *
- * @version 1.9.9
+ * @version 1.9.11
  */
 class Kama_SEO_Tags {
 
@@ -87,9 +87,10 @@ class Kama_SEO_Tags {
 		 *
 		 * @param bool $is_on
 		 */
-		if( apply_filters( 'kama_og_meta_show_article_section', true ) ){
+		if( apply_filters( 'kama_og_meta_show_article_section', true ) && is_singular() ){
+			$post_taxname = get_object_taxonomies( $post->post_type );
 
-			if( is_singular() && $post_taxname = get_object_taxonomies( $post->post_type ) ){
+			if( $post_taxname ){
 
 				$post_terms = get_the_terms( $post, reset( $post_taxname ) );
 				if( $post_terms && $post_term = array_shift( $post_terms ) ){
@@ -151,12 +152,12 @@ class Kama_SEO_Tags {
 							// первое вложение поста
 							if( ! $image ) {
 
-								$attach = get_children([
+								$attach = get_children( [
 									'numberposts'    => 1,
 									'post_mime_type' => 'image',
 									'post_type'      => 'attachment',
 									'post_parent'    => $post->ID,
-								]);
+								] );
 
 								if( $attach && $attach = array_shift( $attach ) ){
 									$image = $attach->ID;
@@ -176,7 +177,7 @@ class Kama_SEO_Tags {
 				/**
 				 * Allow to set `og:image` `og:image:width` `og:image:height` values if it's not.
 				 *
-				 * @param int|string|array|WP_Post  $image_data  WP attachment ID or Image URL or Array [ image_url, width, height ].
+				 * @param int|string|array|WP_Post  $image  WP attachment ID or Image URL or [ image_url, width, height ] array.
 				 */
 				$image = apply_filters( 'kama_og_meta_image', $image );
 				$image = apply_filters( 'kama_og_meta_thumb_id', $image ); // backcompat
@@ -184,34 +185,34 @@ class Kama_SEO_Tags {
 
 			if( $image ){
 
-				if( $image instanceof WP_Post || is_numeric( $image ) ){
+				if(
+					$image instanceof WP_Post
+					||
+					( is_numeric( $image ) && $image = get_post( $image ) )
+				){
 
-					if( is_numeric( $image ) )
-						$image = get_post( $image );
+					// full size
+					[
+						$els['og:image[1]'],
+						$els['og:image[1]:width'],
+						$els['og:image[1]:height'],
+						$els['og:image[1]:alt'],
+						$els['og:image[1]:type']
+					] = array_merge(
+						array_slice( image_downsize( $image->ID, 'full' ), 0, 3 ),
+						[ $image->post_excerpt, $image->post_mime_type ]
+					);
 
-					if( $image ){
-
-						[
-							$els['og:image[1]'],
-							$els['og:image[1]:width'],
-							$els['og:image[1]:height'],
-							$els['og:image[1]:alt'],
-							$els['og:image[1]:type']
-						] = array_merge(
-							array_slice( image_downsize( $image->ID, 'full' ), 0, 3 ),
-							[ $image->post_excerpt, $image->post_mime_type ]
-						);
-
-						if( ! $els['og:image[1]:alt'] )
-							unset( $els['og:image[1]:alt'] );
-
-						// thumbnail
-						[
-							$els['og:image[2]'],
-							$els['og:image[2]:width'],
-							$els['og:image[2]:height']
-						] = array_slice( image_downsize( $image->ID, 'thumbnail' ), 0, 3 );
+					if( ! $els['og:image[1]:alt'] ){
+						unset( $els['og:image[1]:alt'] );
 					}
+
+					// thumbnail size
+					[
+						$els['og:image[2]'],
+						$els['og:image[2]:width'],
+						$els['og:image[2]:height']
+					] = array_slice( image_downsize( $image->ID, 'thumbnail' ), 0, 3 );
 				}
 				elseif( is_array( $image ) ){
 					[
@@ -358,8 +359,9 @@ class Kama_SEO_Tags {
 			if( ! $parts['title'] ){
 				$parts['title'] = single_term_title('', 0 );
 
-				if( is_tax() )
+				if( is_tax() ){
 					$parts['prev'] = get_taxonomy( $term->taxonomy )->labels->name;
+				}
 			}
 
 			$parts['after'] = '{{blog_name}}';
@@ -448,6 +450,7 @@ class Kama_SEO_Tags {
 	 * @return string Description.
 	 */
 	static function meta_description(){
+		global $post;
 
 		// called from `wp_head` hook
 		$echo_result = ( func_num_args() === 1 );
@@ -460,8 +463,6 @@ class Kama_SEO_Tags {
 
 			return $cache;
 		}
-
-		global $post;
 
 		$desc = '';
 		$need_cut = true;

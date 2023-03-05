@@ -11,7 +11,7 @@
  *
  * @author Kama
  *
- * @version 1.9.11
+ * @version 1.9.13
  */
 class Kama_SEO_Tags {
 
@@ -58,8 +58,8 @@ class Kama_SEO_Tags {
 		// og:url
 		if( 'url' ){
 
-			if( $is_post ) $url = get_permalink( $post );
-			if( $is_term ) $url = get_term_link( $term );
+			$is_post && $url = get_permalink( $post );
+			$is_term && $url = get_term_link( $term );
 
 			if( ! empty( $url ) ){
 
@@ -327,15 +327,13 @@ class Kama_SEO_Tags {
 
 			$parts['title'] = get_post_meta( $post->ID, 'title', 1 );
 
-			if( ! $parts['title'] ){
-				/**
-				 * Allow to set meta title for singular type page, before the default title will be taken.
-				 *
-				 * @param string  $title
-				 * @param WP_Post $post
-				 */
-				$parts['title'] = apply_filters( 'kama_meta_title_singular', '', $post );
-			}
+			/**
+			 * Allow to set meta title for singular type page, before the default title will be taken.
+			 *
+			 * @param string  $title
+			 * @param WP_Post $post
+			 */
+			$parts['title'] = apply_filters( 'kama_meta_title_singular', $parts['title'], $post );
 
 			if( ! $parts['title'] ){
 				$parts['title'] = single_post_title( '', 0 );
@@ -493,6 +491,14 @@ class Kama_SEO_Tags {
 				$need_cut = false;
 			}
 
+			/**
+			 * Allow to set meta description for single post, before the default description will be taken.
+			 *
+			 * @param string  $title
+			 * @param WP_Post $post
+			 */
+			$desc = apply_filters( 'kama_meta_description_singular', $desc, $post );
+
 			if( ! $desc ){
 				$desc = $post->post_excerpt ?: $post->post_content;
 			}
@@ -504,8 +510,9 @@ class Kama_SEO_Tags {
 
 			$desc = get_term_meta( $term->term_id, 'meta_description', true );
 
-			if( ! $desc )
+			if( ! $desc ){
 				$desc = get_term_meta( $term->term_id, 'description', true );
+			}
 
 			$need_cut = false;
 			if( ! $desc && $term->description ){
@@ -520,30 +527,22 @@ class Kama_SEO_Tags {
 		$desc = preg_replace( '~\[[^\]]+\](?!\()~', '', $desc );
 
 		/**
-		 * Allow change or set the meta description.
-		 *
-		 * @param string $desc        Current description.
-		 * @param string $origin_desc Description before cut.
-		 * @param bool   $need_cut    Is need to cut?
-		 * @param int    $maxchar     How many characters leave after cut.
-		 */
-		$desc = apply_filters( 'kama_meta_description', $desc );
-
-		/**
 		 * Allow to specify is the meta description need to be cutted.
 		 *
 		 * @param bool $need_cut
 		 */
 		$need_cut = apply_filters( 'kama_meta_description__need_cut', $need_cut );
 
-		if( $need_cut ){
+		/**
+		 * Allow set max length of the meta description.
+		 *
+		 * @param int $maxchar
+		 */
+		$maxchar = apply_filters( 'kama_meta_description__maxchar', 260 );
 
-			/**
-			 * Allow set max length of the meta description.
-			 *
-			 * @param int $maxchar
-			 */
-			$maxchar = apply_filters( 'kama_meta_description__maxchar', 260 );
+		$origin_desc = $desc;
+
+		if( $need_cut ){
 
 			$char = mb_strlen( $desc );
 
@@ -554,6 +553,16 @@ class Kama_SEO_Tags {
 				$desc = implode( ' ', array_slice( $words, 0, $maxwords ) ) . ' ...';
 			}
 		}
+
+		/**
+		 * Allow change or set the meta description.
+		 *
+		 * @param string $desc        Current description.
+		 * @param string $origin_desc Description before cut.
+		 * @param bool   $need_cut    Is need to cut?
+		 * @param int    $maxchar     How many characters leave after cut.
+		 */
+		$desc = apply_filters( 'kama_meta_description', $desc, $origin_desc, $need_cut, $maxchar );
 
 		// remove multi-space
 		$desc = preg_replace( '/\s+/s', ' ', $desc );

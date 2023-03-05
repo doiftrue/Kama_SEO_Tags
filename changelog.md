@@ -1,3 +1,6 @@
+1.9.13 - 1-06-2022
+- Minor improvements.
+
 1.9.8 - 25-10-2021
 - Disable function wptexturize() convert_chars() for title.
 - NEW hook `kama_meta_keywords`.

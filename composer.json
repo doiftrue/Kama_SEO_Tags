@@ -1,0 +1,24 @@
+{
+	"name": "doiftrue/kama-wp-seo-tags",
+	"description": "Simple SEO class for WordPress to create page metatags: title, description, robots, keywords, Open Graph.",
+	"keywords": [ "wordpress" ],
+	"homepage": "https://wp-kama.ru/9537",
+	"type": "library",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Kamaev Timur",
+			"homepage": "https://wp-kama.com"
+		}
+	],
+	"autoload": {
+		"psr-0": {
+			"Kama_SEO_Tags": ""
+		}
+	},
+	"config": {
+		"platform": {
+
+		}
+	}
+}

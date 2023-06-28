@@ -12,9 +12,7 @@
 		}
 	],
 	"autoload": {
-		"psr-0": {
-			"Kama_SEO_Tags": ""
-		}
+		"classmap": [ "Kama_SEO_Tags.php" ]
 	},
 	"config": {
 		"platform": {

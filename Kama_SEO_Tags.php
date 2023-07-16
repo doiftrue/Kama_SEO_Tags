@@ -13,7 +13,7 @@
  *
  * @author Kama
  *
- * @version 1.9.14
+ * @version 1.9.15
  */
 class Kama_SEO_Tags {
 
@@ -604,7 +604,7 @@ trait Kama_SEO_Tags__og_meta {
 		$term && $url = get_term_link( $term );
 
 		// without protocol only: //domain.com/path
-		if( '//' === "{$url[0]}{$url[1]}" ){
+		if( 0 === strpos( $url, '//' ) ){
 			$els['og:url'] = set_url_scheme( $url );
 		}
 		// without domain

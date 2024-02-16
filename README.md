@@ -1,10 +1,49 @@
-# Kama_SEO_Tags
+Kama_SEO_Tags
+=============
 
-Simple SEO class for WordPress to create page metatags:  title, description, robots, keywords, Open Graph.
+Simple SEO class for WordPress to create page metatags:  `title`, `description`, `robots`, `keywords`, `og:____` (Open Graph).
+
+Instalation
+-----------
+```php
+composer require doiftrue/wp-kama-seo-tags
+```
+
+Usage
+-----
+Just init the class.
+
+```php
+Kama_SEO_Tags::init();
+```
+
+### Meta-fields in the admin panel
+
+> [!IMPORTANT]
+> IMPORTANT: The code does not add meta-fields in the admin panel!
+
+The code above only processes (outputs) the necessary SEO meta-tags - it does not add meta-fields to the post or taxonomy term editing page. Such meta-fields need to be created separately.
+
+On the post or term editing page, you need to create a meta box with the following meta-fields:
+
+- ``title`` - an alternative SEO title that will be used in the `<title>` meta-tag instead of the post title.
+- ``description`` - description for the page. If not available, the text from the excerpt will be used, and if that is also not available, a snippet from the beginning of the post content will be used.
+	- ``meta_description`` - this is how the description meta-field for terms should be named, because the `description` key is already used for taxonomies...
+
+- ``keywords`` - keywords meta-tag. I'm not sure if it's needed in modern realities.
+- ``robots`` - the specified value is output as is, for example, `noindex,nofollow`.
+
+
+
+Issues
+------
+If it doesn't work, you need to make sure that the `wp_head()` function is being used in the `header.php` theme file and that it does not output the hard-coded `<title>` tag and other SEO tags.
 
 For more details see: https://wp-kama.ru/9537
 
-## Changelog
+
+Changelog
+---------
 
 1.9.15 - 16-07-2023
 - IMP: PHP Warning fix. 

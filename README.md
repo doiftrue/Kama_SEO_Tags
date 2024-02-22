@@ -1,4 +1,5 @@
-# Kama_SEO_Tags
+Kama_SEO_Tags
+=============
 
 Simple SEO class for WordPress to create page metatags:  title, description, robots, keywords, Open Graph.
 
@@ -7,7 +8,7 @@ For more details see: https://wp-kama.ru/9537
 ## Changelog
 
 1.9.15 - 16-07-2023
-- IMP: PHP Warning fix. 
+- IMP: PHP Warning fix.
 
 1.9.14 - 28-06-2023
 - NEW: `composer.json` added. And module added to Packagist.

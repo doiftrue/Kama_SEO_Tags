@@ -8,32 +8,43 @@
  * IMPORTANT! Since version 1.8.0 title code logic was chenged. Changed your code after update!
  *
  * @see https://github.com/doiftrue/Kama_SEO_Tags
- * @requires PHP 7.1+
- * @requires WP 4.4+
+ * @requires PHP 7.1
+ * @requires WP 5.7
  *
  * @author Kama
  *
- * @version 1.9.15
+ * @version 2.0.0
  */
 class Kama_SEO_Tags {
 
-	use Kama_SEO_Tags__og_meta;
+	public $title = '';
+	public $description = '';
+	public $keywords = '';
 
 	public static function init(): void {
+		$class = new self();
 
 		// force WP document_title function to run
 		add_theme_support( 'title-tag' );
-		add_filter( 'pre_get_document_title', [ __CLASS__, 'meta_title' ], 1 );
+		add_filter( 'pre_get_document_title', [ $class, 'get_meta_title' ], 1 );
 
-		add_action( 'wp_head', [ __CLASS__, 'meta_description' ], 1 );
-		add_action( 'wp_head', [ __CLASS__, 'meta_keywords' ], 1 );
-		add_action( 'wp_head', [ __CLASS__, 'og_meta' ], 1 );
+		add_action( 'wp_head', [ $class, 'echo_meta_description' ], 1 );
+		add_action( 'wp_head', [ $class, 'echo_meta_keywords' ], 1 );
 
 		// WP 5.7+
-		add_filter( 'wp_robots', [ __CLASS__, 'wp_robots_callback' ], 11 );
+		add_filter( 'wp_robots', [ $class, 'wp_robots_callback' ], 11 );
+
+		$og_meta = new Kama_SEO_Tags__og_meta( $class );
+		add_action( 'wp_head', [ $og_meta, 'echo_og_meta' ], 1 ); // !IMPORTANT at the end
 	}
 
-	private static function get_title_l10n(): array {
+	/**
+	 * @return self
+	 */
+	public function __construct() {
+	}
+
+	private function get_title_l10n(): array {
 
 		$locale = get_locale();
 
@@ -71,9 +82,9 @@ class Kama_SEO_Tags {
 	}
 
 	/**
-	 * @return array{ 0:WP_Post, 1:WP_Term }
+	 * @return array{ 0:null|WP_Post, 1:null|WP_Term }
 	 */
-	public static function get_queried_objects(): array {
+	public function get_queried_objects(): array {
 		$qo = get_queried_object();
 
 		$post = isset( $qo->post_type ) ? $qo : null;
@@ -91,21 +102,16 @@ class Kama_SEO_Tags {
 	 *
 	 * @return string
 	 */
-	public static function meta_title( $title = '' ){
+	public function get_meta_title( $title = '' ) {
 
 		// support for `pre_get_document_title` hook.
 		if( $title ){
 			return $title;
 		}
 
-		static $cache;
-		if( $cache ){
-			return $cache;
-		}
+		[ $post, $term ] = $this->get_queried_objects();
 
-		[ $post, $term ] = self::get_queried_objects();
-
-		$l10n = self::get_title_l10n();
+		$l10n = $this->get_title_l10n();
 
 		$parts = [
 			'prev'  => '', // before title (post comment page)
@@ -137,8 +143,8 @@ class Kama_SEO_Tags {
 		// singular
 		elseif(
 			$post
-	        || ( is_home() && ! is_front_page() )
-	        || ( is_page() && ! is_front_page() )
+			|| ( is_home() && ! is_front_page() )
+			|| ( is_page() && ! is_front_page() )
 		){
 			$parts['title'] = get_post_meta( $post->ID, 'title', true );
 
@@ -261,14 +267,31 @@ class Kama_SEO_Tags {
 		$title = capital_P_dangit( $title );
 		$title = esc_html( $title );
 
-		return $cache = $title;
+		$this->title = $title;
+
+		return $this->title;
 	}
 
 	/**
 	 * For `wp_head` hook.
 	 */
-	public static function meta_description(): void {
-		echo self::get_meta_description();
+	public function echo_meta_description(): void {
+		$this->set_meta_description();
+
+		if( $this->description ){
+			echo sprintf( "<meta name=\"description\" content=\"%s\" />\n", esc_attr( $this->description ) );
+		}
+	}
+
+	/**
+	 * For `wp_head` hook.
+	 */
+	public function echo_meta_keywords(): void {
+		$this->set_meta_keywords();
+
+		if( $this->keywords ){
+			echo sprintf( "<meta name=\"keywords\" content=\"%s\" />\n", esc_attr( $this->keywords ) );
+		}
 	}
 
 	/**
@@ -282,29 +305,22 @@ class Kama_SEO_Tags {
 	 *
 	 * @return string Metatag or empty string if not description found.
 	 */
-	public static function get_meta_description(): string {
-
-		static $cache = null;
-		if( null !== $cache ){
-			return $cache;
-		}
-
-		[ $post, $term ] = self::get_queried_objects();
+	public function set_meta_description(): void {
+		[ $post, $term ] = $this->get_queried_objects();
 
 		$desc = '';
 		$need_cut = true;
 
-		// front
+		// home page
 		if( is_front_page() ){
 
-			// когда для главной установлена страница
+			// when static page is set for home_page
 			if( is_page() ){
 				$desc = get_post_meta( $post->ID, 'description', true );
 				$need_cut = false;
 			}
 
 			if( ! $desc ){
-
 				/**
 				 * Allow to change front_page meta description.
 				 *
@@ -313,7 +329,6 @@ class Kama_SEO_Tags {
 				$desc = apply_filters( 'home_meta_description', get_bloginfo( 'description', 'display' ) );
 			}
 		}
-		// any post
 		elseif( $post ){
 
 			if( $desc = get_post_meta( $post->ID, 'description', true ) ){
@@ -334,9 +349,7 @@ class Kama_SEO_Tags {
 
 			$desc = trim( strip_tags( $desc ) );
 		}
-		// any term (taxonomy element)
 		elseif( $term ){
-
 			$desc = get_term_meta( $term->term_id, 'meta_description', true );
 
 			if( ! $desc ){
@@ -395,15 +408,11 @@ class Kama_SEO_Tags {
 		// remove multi-space
 		$desc = preg_replace( '/\s+/s', ' ', $desc );
 
-		if( $desc ){
-			$desc = sprintf( "<meta name=\"description\" content=\"%s\" />\n", esc_attr( trim( $desc ) ) );
-		}
-
-		return $cache = $desc;
+		$this->description = trim( $desc );
 	}
 
 	/**
-	 * Wrpper for WP Robots API introduced in WP 5.7+.
+	 * Wrapper for WP Robots API introduced in WP 5.7.
 	 *
 	 * Set post/term mete with `robots` key and values separeted with comma. Eg: `noindex,nofollow`.
 	 *
@@ -411,9 +420,9 @@ class Kama_SEO_Tags {
 	 *
 	 * @param array $robots
 	 */
-	public static function wp_robots_callback( $robots ){
+	public function wp_robots_callback( $robots ) {
 
-		[ $post, $term ] = self::get_queried_objects();
+		[ $post, $term ] = $this->get_queried_objects();
 
 		if( $post ){
 			$robots_str = get_post_meta( $post->ID, 'robots', true );
@@ -464,20 +473,20 @@ class Kama_SEO_Tags {
 	 * @param string $def_keywords  сквозные ключевые слова - укажем и они будут прибавляться
 	 *                              к остальным на всех страницах.
 	 */
-	public static function meta_keywords( $home_keywords = '', $def_keywords = '' ){
-		$out = [];
+	public function set_meta_keywords( $home_keywords = '', ?string $def_keywords = '' ): void {
+		[ $post, $term ] = $this->get_queried_objects();
 
-		[ $post, $term ] = self::get_queried_objects();
+		$keywords = [];
 
 		if( is_front_page() ){
-			$out[] = $home_keywords;
+			$keywords[] = $home_keywords;
 		}
 		elseif( is_singular() ){
 
 			$meta_keywords = get_post_meta( $post->ID, 'keywords', true );
 
 			if( $meta_keywords ){
-				$out[] = $meta_keywords;
+				$keywords[] = $meta_keywords;
 			}
 			elseif( $post->post_type === 'post' ){
 
@@ -485,76 +494,83 @@ class Kama_SEO_Tags {
 
 				if( $res && ! is_wp_error( $res ) ){
 					foreach( $res as $tag ){
-						$out[] = $tag->name;
+						$keywords[] = $tag->name;
 					}
 				}
 			}
 
 		}
 		elseif( $term ){
-			$out[] = get_term_meta( $term->term_id, 'keywords', true );
+			$keywords[] = get_term_meta( $term->term_id, 'keywords', true );
 		}
 
 		if( $def_keywords ){
-			$out[] = $def_keywords;
+			$keywords[] = $def_keywords;
 		}
 
-		$out = implode( ', ', $out );
+		$keywords = implode( ', ', $keywords );
 
 		/**
 		 * Allow to change resulting string of meta_keywords() method.
 		 *
-		 * @param string $out
+		 * @param string $keywords
 		 */
-		$out = apply_filters( 'kama_meta_keywords', $out );
-
-		echo $out
-			? '<meta name="keywords" content="'. esc_attr( $out ) .'" />' . "\n"
-			: '';
+		$this->keywords = apply_filters( 'kama_meta_keywords', $keywords );
 	}
 
 }
 
-trait Kama_SEO_Tags__og_meta {
+/**
+ * @see http://ogp.me/ (Open Graph protocol documentation)
+ */
+class Kama_SEO_Tags__og_meta {
+
+	/** @var  Kama_SEO_Tags*/
+	private $kst;
+
+	public function __construct( Kama_SEO_Tags $kst ){
+		$this->kst = $kst;
+	}
 
 	/**
 	 * Displays Open Graph, twitter data in `<head>`.
-	 *
 	 * Designed to use in `wp_head` hook.
-	 *
-	 * @See Documentation: http://ogp.me/
 	 */
-	public static function og_meta(): void {
+	public function echo_og_meta(): void {
+		$metas = $this->get_og_meta_data();
 
-		[ $post, $term ] = self::get_queried_objects();
+		$meta_tags = [];
+		foreach( $metas as $key => $val ){
+			// og:image[1] > og:image  ||  og:image[1]:width > og:image:width
+			$fixed_key = preg_replace( '/\[\d\]/', '', $key );
 
-		$title = self::meta_title();
-		$desc = preg_replace( '/^.+content="([^"]*)".*$/s', '$1', self::get_meta_description() );
-
-		// base
-		$els = [
-			'og:locale'      => get_locale(),
-			'og:site_name'   => get_bloginfo('name'),
-			'og:title'       => $title,
-			'og:description' => $desc,
-			'og:type'        => is_singular() ? 'article' : 'object',
-		];
-
-		self::set_og_url( $post, $term, $els );
-
-		self::set_og_image( $post, $term, $els );
-
-		self::set_og_article_section( $post, $term, $els );
-
-
-		// set `twitter:___`
-
-		$els['twitter:card'] = 'summary';
-		$els['twitter:title'] = $els['og:title'];
-		$els['twitter:description'] = $els['og:description'];
-		if( ! empty( $els['og:image[1]'] ) ){
-			$els['twitter:image'] = $els['og:image[1]'];
+			if( 0 === strpos( $key, 'twitter:' ) ){
+				$meta_tags[ $key ] = sprintf( '<meta name="%s" content="%s" />', $fixed_key, esc_attr( $val ) );
+			}
+			else{
+				$meta_tags[ $key ] = sprintf( '<meta property="%s" content="%s" />', $fixed_key, esc_attr( $val ) );
+			}
 		}
+
+		/**
+		 * Filter resulting properties. Allows to add or remove any og/twitter properties.
+		 *
+		 * @param array $metas og meta elements array.
+		 */
+		$meta_tags = apply_filters( 'kama_og_meta_elements', $meta_tags, $metas );
+
+		echo "\n\n". implode( "\n", $meta_tags ) ."\n\n";
+	}
+
+	public function get_og_meta_data(): array {
+		[ $post, $term ] = $this->kst->get_queried_objects();
+
+		$els = [];
+		$this->fill_basic( $post, $term, $els );
+		$this->fill_type( $post, $term, $els );
+		$this->fill_og_url( $post, $term, $els );
+		$this->fill_og_image( $post, $term, $els );
+		$this->fill_twitter( $post, $term, $els ); // !IMPORTANT after set_og_image()
 
 		/**
 		 * Allows change values of og / twitter meta properties.
@@ -562,40 +578,79 @@ trait Kama_SEO_Tags__og_meta {
 		 * @param array $els
 		 */
 		$els = apply_filters( 'kama_og_meta_elements_values', $els );
-		$els = array_filter( $els );
-		ksort( $els );
 
-		// make <meta> tags
-		$metas = [];
-		foreach( $els as $key => $val ){
+		return array_filter( $els );
+	}
 
-			// og:image[1] > og:image  ||  og:image[1]:width > og:image:width
-			$fixed_key = preg_replace( '/\[\d\]/', '', $key );
+	protected function fill_basic( ?WP_Post $post, ?WP_Term $term, array & $els ): void {
+		$els['og:locale']      = get_locale();
+		$els['og:site_name']   = get_bloginfo('name');
+		$els['og:title']       = $this->kst->title;
+		$els['og:description'] = $this->kst->description;
+	}
 
-			if( 0 === strpos( $key, 'twitter:' ) ){
-				$metas[ $key ] = sprintf( '<meta name="%s" content="%s" />', $fixed_key, esc_attr( $val ) );
+	protected function fill_type( ?WP_Post $post, ?WP_Term $term, array & $els ): void {
+
+		if( ! $post || ! is_singular() ){
+			$els['og:type'] = 'website';
+			return;
+		}
+
+		$els['og:type'] = 'article';
+		$els['article:published_time'] = mysql2date( 'c', $post->post_date, false );
+		$els['article:modified_time'] = mysql2date( 'c', $post->post_modified, false );
+		$els['article:author'] = get_user_by( 'id', (int) $post->post_author )->display_name ?? '';
+
+		$this->_fill_og_article_section( $post, $term, $els );
+	}
+
+	protected function _fill_og_article_section( ?WP_Post $post, ?WP_Term $term, array & $els ): void {
+		/**
+		 * Allow to disable `article:section` property.
+		 *
+		 * @param bool         $is_enabled  True if queried object is any WP post type.
+		 * @param null|WP_Post $post        Since v1.9.17.
+		 * @param null|WP_Term $term        Since v1.9.17.
+		 */
+		if( ! apply_filters( 'kama_og_meta_show_article_section', (bool) $post, $post, $term ) || ! is_singular() ){
+			return;
+		}
+
+		$tax_objects = get_object_taxonomies( $post->post_type, 'objects' );
+		$tax_types = [];
+		foreach( $tax_objects as $obj ){
+			if( ! $obj->public || ! $obj->publicly_queryable ){
+				continue;
 			}
-			else{
-				$metas[ $key ] = sprintf( '<meta property="%s" content="%s" />', $fixed_key, esc_attr( $val ) );
+
+			if( isset( $tax_types['cat'] ) && isset( $tax_types['tag'] ) ){
+				break;
+			}
+
+			$obj->hierarchical
+				? ( $tax_types['cat'] = $obj->name )
+				: ( $tax_types['tag'] = $obj->name );
+		}
+
+		foreach( $tax_types as $key => $taxname ){
+			$post_terms = get_the_terms( $post, $taxname ) ?: [];
+			if( ! $post_terms || is_wp_error( $post_terms ) ){
+				continue;
+			}
+
+			if( 'cat' === $key ){
+				$els['article:section'] = reset( $post_terms )->name;
+			}
+			else {
+				foreach( $post_terms as $index => $_term ){
+					$els["article:tag[$index]"] = $_term->name;
+				}
 			}
 		}
 
-		/**
-		 * Filter resulting properties. Allows to add or remove any og/twitter properties.
-		 *
-		 * @param array  $els
-		 */
-		$metas = apply_filters( 'kama_og_meta_elements', $metas, $els );
-
-		echo "\n\n". implode( "\n", $metas ) ."\n\n";
 	}
 
-	/**
-	 * @param WP_Post $post
-	 * @param WP_Term $term
-	 * @param array   $els
-	 */
-	private static function set_og_url( $post, $term, & $els ): void {
+	protected function fill_og_url( ?WP_Post $post, ?WP_Term $term, array & $els ): void {
 		if( ! $post && ! $term ){
 			return;
 		}
@@ -617,37 +672,33 @@ trait Kama_SEO_Tags__og_meta {
 		}
 	}
 
-	/**
-	 * @param WP_Post $post
-	 * @param WP_Term $term
-	 * @param array   $els
-	 */
-	private static function set_og_image( $post, $term, & $els ): void {
+	protected function fill_og_image( ?WP_Post $post, ?WP_Term $term, array & $els ): void {
 		/**
 		 * Allow to change `og:image` `og:image:width` `og:image:height` values.
 		 *
-		 * @param int|string|array|WP_Post  $image_data  WP attachment ID or Image URL or Array [ image_url, width, height ].
+		 * @param int|string|array|WP_Post $image_data  WP attachment ID or Image URL or Array [ image_url, width, height ].
+		 * @param null|WP_Post             $post        Since v1.9.17.
+		 * @param null|WP_Term             $term        Since v1.9.17.
 		 */
-		$image = apply_filters( 'pre_kama_og_meta_image', null );
+		$image = apply_filters( 'pre_kama_og_meta_image', null, $post, $term );
 
 		if( ! $image ){
 			/**
 			 * Allows to turn off the image search in post content.
 			 *
-			 * @param bool $is_on
+			 * @param bool $is_enabled
 			 */
 			$is_find_in_content = apply_filters( 'kama_og_meta_thumb_id_find_in_content', true );
 
 			if( $post ){
-				$image = get_post_thumbnail_id( $post );
+				$image = (int) get_post_thumbnail_id( $post );
 
 				if( ! $image && $is_find_in_content ){
 
-					$image = self::get_attach_image_id_from_text( $post->post_content );
+					$image = $this->get_attach_image_id_from_text( $post->post_content );
 
-					// первое вложение поста
+					// The first post attachment
 					if( ! $image ) {
-
 						$attach = get_children( [
 							'numberposts'    => 1,
 							'post_mime_type' => 'image',
@@ -663,11 +714,10 @@ trait Kama_SEO_Tags__og_meta {
 			}
 
 			if( $term && $is_find_in_content ){
+				$image = (int) get_term_meta( $term->term_id, '_thumbnail_id', true );
 
-				$image = get_term_meta( $term->term_id, '_thumbnail_id', true );
-
-				if( ! $image ){
-					$image = self::get_attach_image_id_from_text( $term->description );
+				if( ! $image && $term->description ){
+					$image = $this->get_attach_image_id_from_text( $term->description );
 				}
 			}
 
@@ -675,8 +725,10 @@ trait Kama_SEO_Tags__og_meta {
 			 * Allow to set `og:image` `og:image:width` `og:image:height` values if it's not.
 			 *
 			 * @param int|string|array|WP_Post  $image  WP attachment ID or Image URL or [ image_url, width, height ] array.
+			 * @param null|WP_Post             $post        Since v1.9.17.
+			 * @param null|WP_Term             $term        Since v1.9.17.
 			 */
-			$image = apply_filters( 'kama_og_meta_image', $image );
+			$image = apply_filters( 'kama_og_meta_image', $image, $post, $term );
 			$image = apply_filters( 'kama_og_meta_thumb_id', $image ); // for backcompat
 		}
 
@@ -684,68 +736,59 @@ trait Kama_SEO_Tags__og_meta {
 			return;
 		}
 
+		// WP_Post | int
 		if(
 			$image instanceof WP_Post
-			||
-			( is_numeric( $image ) && $image = get_post( $image ) )
+			|| ( is_numeric( $image ) && $image = get_post( $image ) )
 		){
+			// full size
+			[ $url, $width, $height ] = image_downsize( $image->ID, 'full' );
+			$image_alt = $image->_wp_attachment_image_alt ?: $image->post_excerpt;
+			$mime_type = $image->post_mime_type;
 
-			[
-				$els['og:image[1]'],
-				$els['og:image[1]:width'],
-				$els['og:image[1]:height'],
-				$els['og:image[1]:alt'],
-				$els['og:image[1]:type']
-			] = array_merge(
-				array_slice( image_downsize( $image->ID, 'full' ), 0, 3 ),
-				[ $image->post_excerpt, $image->post_mime_type ]
-			);
-
-			if( ! $els['og:image[1]:alt'] ){
-				unset( $els['og:image[1]:alt'] );
-			}
+			$els['og:image[1]']        = $url;
+			$els['og:image[1]:width']  = $width;
+			$els['og:image[1]:height'] = $height;
+			$els['og:image[1]:alt']    = $image_alt;
+			$els['og:image[1]:type']   = $mime_type;
 
 			// thumbnail size
-			[
-				$els['og:image[2]'],
-				$els['og:image[2]:width'],
-				$els['og:image[2]:height']
-			] = array_slice( image_downsize( $image->ID, 'thumbnail' ), 0, 3 );
+			[ $url, $width, $height ] = image_downsize( $image->ID, 'thumbnail' );
+
+			$els['og:image[2]']        = $url;
+			$els['og:image[2]:width']  = $width;
+			$els['og:image[2]:height'] = $height;
 		}
+		// array
 		elseif( is_array( $image ) ){
-			[
-				$els['og:image[1]'],
-				$els['og:image[1]:width'],
-				$els['og:image[1]:height']
-			] = $image;
+			$els['og:image[1]']        = $image['og:image']        ?? $image[0];
+			$els['og:image[1]:width']  = $image['og:image:width']  ?? $image[1];
+			$els['og:image[1]:height'] = $image['og:image:height'] ?? $image[2];
+			$els['og:image[1]:alt']    = $image['og:image:alt']    ?? $image[3];
+			$els['og:image[1]:type']   = $image['og:image:type']   ?? $image[4];
 		}
+		// string
 		else{
 			$els['og:image[1]'] = $image;
 		}
 	}
 
-	/**
-	 * @param WP_Post $post
-	 * @param WP_Term $term
-	 * @param array   $els
-	 */
-	private static function set_og_article_section( $post, $term, & $els ): void {
+	protected function fill_twitter( ?WP_Post $post, ?WP_Term $term, array & $els ): void {
 		/**
-		 * Allow to disable `article:section` property.
+		 * Allow to disable `twitter:*` elements.
 		 *
-		 * @param bool $is_on
+		 * @param bool $is_enabled Default: true.
 		 */
-		if( ! apply_filters( 'kama_og_meta_show_article_section', true ) || ! is_singular() ){
+		if( ! apply_filters( 'kama_seo_tags__show_twitter', true ) ){
 			return;
 		}
 
-		$post_taxname = get_object_taxonomies( $post->post_type );
-		if( $post_taxname ){
-			$post_terms = get_the_terms( $post, reset( $post_taxname ) );
+		$els['twitter:card'] = 'summary';
+		$els['twitter:title'] = $els['og:title'];
+		$els['twitter:description'] = $els['og:description'];
 
-			if( $post_terms && $post_term = array_shift( $post_terms ) ){
-				$els['article:section'] = $post_term->name;
-			}
+		if( ! empty( $els['og:image[1]'] ) ){
+			$els['twitter:image'] = $els['og:image[1]'];
 		}
 	}
 
@@ -754,16 +797,17 @@ trait Kama_SEO_Tags__og_meta {
 	 * Passed content checks with regex and first image name is retrieved,
 	 * then the ID is searched in DB by found image name.
 	 */
-	private static function get_attach_image_id_from_text( string $text ): int {
+	private function get_attach_image_id_from_text( string $text ): int {
 
-		if(
-			preg_match( '/<img +src *= *[\'"]([^\'"]+)[\'"]/', $text, $mm )
-			&&
-			( '/' === $mm[1][0] || strpos($mm[1], $_SERVER['HTTP_HOST']) )
+		preg_match( '/<img[^>]+(?:src|srcset) *= *[\'"](?P<src>[^\'", ]+)/', $text, $mm );
+
+		$src = $mm['src'] ?? '';
+
+		if( $src && ( '/' === $src[0] || strpos( $src, $_SERVER['HTTP_HOST'] ?? '' ) )
 		){
-			$name = basename( $mm[1] );
-			$name = preg_replace( '~-[0-9]+x[0-9]+(?=\..{2,6})~', '', $name ); // удалим размер (-80x80)
-			$name = preg_replace( '~\.[^.]+$~', '', $name );                   // удалим расширение
+			$name = basename( $src );
+			$name = preg_replace( '~-\d+x\d+(?=\..{2,6})~', '', $name ); // remove the size part (-80x80)
+			$name = preg_replace( '~\.[^.]+$~', '', $name );             // remove the extension
 			$name = sanitize_title( sanitize_file_name( $name ) );
 
 			global $wpdb;

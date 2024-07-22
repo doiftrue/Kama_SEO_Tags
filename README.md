@@ -14,7 +14,7 @@ Usage
 Just init the class.
 
 ```php
-Kama_SEO_Tags::init();
+$Kama_SEO_Tags = Kama_SEO_Tags::init();
 ```
 
 ### Meta-fields in the admin panel

@@ -13,7 +13,7 @@
  *
  * @author Kama
  *
- * @version 2.0.0
+ * @version 2.1.0
  */
 class Kama_SEO_Tags {
 
@@ -21,7 +21,12 @@ class Kama_SEO_Tags {
 	public $description = '';
 	public $keywords = '';
 
-	public static function init(): void {
+	public static function init(): self {
+		static $class;
+		if( $class ){
+			return $class;
+		}
+
 		$class = new self();
 
 		// force WP document_title function to run
@@ -36,12 +41,14 @@ class Kama_SEO_Tags {
 
 		$og_meta = new Kama_SEO_Tags__og_meta( $class );
 		add_action( 'wp_head', [ $og_meta, 'echo_og_meta' ], 1 ); // !IMPORTANT at the end
+
+		return $class;
 	}
 
 	/**
-	 * @return self
+	 * Use ::init() result to get access to this object.
 	 */
-	public function __construct() {
+	private function __construct() {
 	}
 
 	private function get_title_l10n(): array {

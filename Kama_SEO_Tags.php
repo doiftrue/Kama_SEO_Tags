@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Simple SEO class for WordPress to create page metatags:
  * title, description, robots, keywords, Open Graph.
@@ -8,18 +7,19 @@
  * IMPORTANT! Since version 1.8.0 title code logic was chenged. Changed your code after update!
  *
  * @see https://github.com/doiftrue/Kama_SEO_Tags
- * @requires PHP 7.1
+ * @requires PHP 7.4
  * @requires WP 5.7
  *
  * @author Kama
  *
- * @version 2.1.0
+ * @version 2.1.1
  */
+
 class Kama_SEO_Tags {
 
-	public $title = '';
-	public $description = '';
-	public $keywords = '';
+	public string $title = '';
+	public string $description = '';
+	public string $keywords = '';
 
 	public static function init(): self {
 		static $class;
@@ -560,9 +560,10 @@ class Kama_SEO_Tags__og_meta {
 		}
 
 		/**
-		 * Filter resulting properties. Allows to add or remove any og/twitter properties.
+		 * Allows to add/remove any og/twitter properties.
 		 *
-		 * @param array $metas og meta elements array.
+		 * @param array $meta_tags Current meta elements.
+		 * @param array $metas     Original meta elements.
 		 */
 		$meta_tags = apply_filters( 'kama_og_meta_elements', $meta_tags, $metas );
 
@@ -662,6 +663,7 @@ class Kama_SEO_Tags__og_meta {
 			return;
 		}
 
+		$url = '';
 		$post && $url = get_permalink( $post );
 		$term && $url = get_term_link( $term );
 
@@ -687,7 +689,7 @@ class Kama_SEO_Tags__og_meta {
 		 * @param null|WP_Post             $post        Since v1.9.17.
 		 * @param null|WP_Term             $term        Since v1.9.17.
 		 */
-		$image = apply_filters( 'pre_kama_og_meta_image', null, $post, $term );
+		$image = apply_filters( 'pre_kama_og_meta_image', 0, $post, $term );
 
 		if( ! $image ){
 			/**

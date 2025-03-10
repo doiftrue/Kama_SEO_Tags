@@ -12,31 +12,40 @@
  *
  * @author Kama
  *
- * @version 2.1.2
+ * @version 2.1.3
  */
 
 class Kama_SEO_Tags {
 
-	public string $title = '';
-	public string $description = '';
-	public string $keywords = '';
+	public string $title = '';        // readonly
+	public string $description = '';  // readonly
+	public string $keywords = '';     // readonly
 
-	public static function instance(): self {
-		static $instance;
-		$instance || $instance = new self();
-		
-		return $instance;
+	/// params
+
+	public bool $is_echo_keywords = true; // readonly
+
+	public static function instance( array $params = [] ): self {
+		static $self;
+
+		if( ! $self ){
+			$self = new self();
+			$self->is_echo_keywords = $params['is_echo_keywords'] ?? true;
+		}
+
+		return $self;
 	}
-	
-	public static function init(): self {
-		$self = self::instance();
 
-		// force WP document_title function to run
-		add_theme_support( 'title-tag' );
+	public static function init( array $params = [] ): self {
+		$self = self::instance( $params );
+
+		add_theme_support( 'title-tag' ); // force WP document_title function to run
 		add_filter( 'pre_get_document_title', [ $self, 'get_meta_title' ], 1 );
 
 		add_action( 'wp_head', [ $self, 'echo_meta_description' ], 1 );
-		add_action( 'wp_head', [ $self, 'echo_meta_keywords' ], 1 );
+		if( $self->is_echo_keywords ){
+			add_action( 'wp_head', [ $self, 'echo_meta_keywords' ], 1 );
+		}
 
 		// WP 5.7+
 		add_filter( 'wp_robots', [ $self, 'wp_robots_callback' ], 11 );
@@ -278,7 +287,7 @@ class Kama_SEO_Tags {
 
 		$this->title = $title;
 
-		return $this->title;
+		return $title;
 	}
 
 	/**
@@ -534,8 +543,7 @@ class Kama_SEO_Tags {
  */
 class Kama_SEO_Tags__og_meta {
 
-	/** @var  Kama_SEO_Tags*/
-	private $kst;
+	private Kama_SEO_Tags $kst;
 
 	public function __construct( Kama_SEO_Tags $kst ){
 		$this->kst = $kst;
@@ -553,7 +561,7 @@ class Kama_SEO_Tags__og_meta {
 			// og:image[1] > og:image  ||  og:image[1]:width > og:image:width
 			$fixed_key = preg_replace( '/\[\d\]/', '', $key );
 
-			if( 0 === strpos( $key, 'twitter:' ) ){
+			if( str_starts_with( $key, 'twitter:' ) ){
 				$meta_tags[ $key ] = sprintf( '<meta name="%s" content="%s" />', $fixed_key, esc_attr( $val ) );
 			}
 			else{
@@ -670,7 +678,7 @@ class Kama_SEO_Tags__og_meta {
 		$term && $url = get_term_link( $term );
 
 		// without protocol only: //domain.com/path
-		if( 0 === strpos( $url, '//' ) ){
+		if( str_starts_with( $url, '//' ) ){
 			$els['og:url'] = set_url_scheme( $url );
 		}
 		// without domain

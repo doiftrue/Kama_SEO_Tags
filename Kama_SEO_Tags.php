@@ -12,7 +12,7 @@
  *
  * @author Kama
  *
- * @version 2.1.1
+ * @version 2.1.2
  */
 
 class Kama_SEO_Tags {
@@ -21,28 +21,30 @@ class Kama_SEO_Tags {
 	public string $description = '';
 	public string $keywords = '';
 
+	public static function instance(): self {
+		static $instance;
+		$instance || $instance = new self();
+		
+		return $instance;
+	}
+	
 	public static function init(): self {
-		static $class;
-		if( $class ){
-			return $class;
-		}
-
-		$class = new self();
+		$self = self::instance();
 
 		// force WP document_title function to run
 		add_theme_support( 'title-tag' );
-		add_filter( 'pre_get_document_title', [ $class, 'get_meta_title' ], 1 );
+		add_filter( 'pre_get_document_title', [ $self, 'get_meta_title' ], 1 );
 
-		add_action( 'wp_head', [ $class, 'echo_meta_description' ], 1 );
-		add_action( 'wp_head', [ $class, 'echo_meta_keywords' ], 1 );
+		add_action( 'wp_head', [ $self, 'echo_meta_description' ], 1 );
+		add_action( 'wp_head', [ $self, 'echo_meta_keywords' ], 1 );
 
 		// WP 5.7+
-		add_filter( 'wp_robots', [ $class, 'wp_robots_callback' ], 11 );
+		add_filter( 'wp_robots', [ $self, 'wp_robots_callback' ], 11 );
 
-		$og_meta = new Kama_SEO_Tags__og_meta( $class );
+		$og_meta = new Kama_SEO_Tags__og_meta( $self );
 		add_action( 'wp_head', [ $og_meta, 'echo_og_meta' ], 1 ); // !IMPORTANT at the end
 
-		return $class;
+		return $self;
 	}
 
 	/**

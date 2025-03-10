@@ -12,10 +12,41 @@
  *
  * @author Kama
  *
- * @version 2.1.3
+ * @version 2.2.0
  */
 
 class Kama_SEO_Tags {
+
+	public static function init( array $params = [] ): Kama_SEO_Tags_Core {
+		$core = self::instance( $params );
+
+		add_theme_support( 'title-tag' ); // force WP document_title function to run
+		add_filter( 'pre_get_document_title', [ $core, 'get_meta_title' ], 1 );
+
+		add_action( 'wp_head', [ $core, 'echo_meta_description' ], 1 );
+		if( $core->is_echo_keywords ){
+			add_action( 'wp_head', [ $core, 'echo_meta_keywords' ], 1 );
+		}
+
+		// WP 5.7+
+		add_filter( 'wp_robots', [ $core, 'wp_robots_callback' ], 11 );
+
+		$og_meta = new Kama_SEO_Tags_og_meta( $core );
+		add_action( 'wp_head', [ $og_meta, 'echo_og_meta' ], 1 ); // !IMPORTANT at the end
+
+		return $core;
+	}
+
+	public static function instance( array $params = [] ): Kama_SEO_Tags_Core {
+		static $core;
+		$core || $core = new Kama_SEO_Tags_Core( $params );
+
+		return $core;
+	}
+
+}
+
+class Kama_SEO_Tags_Core {
 
 	public string $title = '';        // readonly
 	public string $description = '';  // readonly
@@ -25,41 +56,8 @@ class Kama_SEO_Tags {
 
 	public bool $is_echo_keywords = true; // readonly
 
-	public static function instance( array $params = [] ): self {
-		static $self;
-
-		if( ! $self ){
-			$self = new self();
-			$self->is_echo_keywords = $params['is_echo_keywords'] ?? true;
-		}
-
-		return $self;
-	}
-
-	public static function init( array $params = [] ): self {
-		$self = self::instance( $params );
-
-		add_theme_support( 'title-tag' ); // force WP document_title function to run
-		add_filter( 'pre_get_document_title', [ $self, 'get_meta_title' ], 1 );
-
-		add_action( 'wp_head', [ $self, 'echo_meta_description' ], 1 );
-		if( $self->is_echo_keywords ){
-			add_action( 'wp_head', [ $self, 'echo_meta_keywords' ], 1 );
-		}
-
-		// WP 5.7+
-		add_filter( 'wp_robots', [ $self, 'wp_robots_callback' ], 11 );
-
-		$og_meta = new Kama_SEO_Tags__og_meta( $self );
-		add_action( 'wp_head', [ $og_meta, 'echo_og_meta' ], 1 ); // !IMPORTANT at the end
-
-		return $self;
-	}
-
-	/**
-	 * Use ::init() result to get access to this object.
-	 */
-	private function __construct() {
+	public function __construct( array $params = [] ) {
+		$this->is_echo_keywords = $params['is_echo_keywords'] ?? true;
 	}
 
 	private function get_title_l10n(): array {
@@ -538,14 +536,15 @@ class Kama_SEO_Tags {
 
 }
 
+
 /**
  * @see http://ogp.me/ (Open Graph protocol documentation)
  */
-class Kama_SEO_Tags__og_meta {
+class Kama_SEO_Tags_og_meta {
 
-	private Kama_SEO_Tags $kst;
+	private Kama_SEO_Tags_Core $kst;
 
-	public function __construct( Kama_SEO_Tags $kst ){
+	public function __construct( Kama_SEO_Tags_Core $kst ){
 		$this->kst = $kst;
 	}
 

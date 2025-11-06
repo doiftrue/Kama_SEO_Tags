@@ -7,12 +7,13 @@
  * IMPORTANT! Since version 1.8.0 title code logic was chenged. Changed your code after update!
  *
  * @see https://github.com/doiftrue/Kama_SEO_Tags
- * @requires PHP 7.4
- * @requires WP 5.7
  *
  * @author Kama
  *
- * @version 2.2.0
+ * @requires PHP 7.4
+ * @requires WP 5.7
+ *
+ * @version 2.2.2
  */
 
 class Kama_SEO_Tags {
@@ -61,11 +62,8 @@ class Kama_SEO_Tags_Core {
 	}
 
 	private function get_title_l10n(): array {
-
-		$locale = get_locale();
-
-		if( 'ru_RU' === $locale ){
-			$l10n = [
+		$l10n = ( 'ru_RU' === get_locale() )
+			? [
 				'404'     => 'Ошибка 404: такой страницы не существует',
 				'search'  => 'Результаты поиска по запросу: %s',
 				'compage' => 'Комментарии %s',
@@ -74,20 +72,16 @@ class Kama_SEO_Tags_Core {
 				'year'    => 'Архив за {year} год',                // Архив за 2023 год
 				'month'   => 'Архив за {month} {year} года',       // Архив за январь 2023 года
 				'day'     => "Архив за {day} {month} {year} года", // Архив за 23 января 2023 года
-			];
-		}
-		else{
-			$l10n = [
+			] : [
 				'404'     => 'Error 404: there is no such page',
 				'search'  => 'Search results by query: %s',
 				'compage' => 'Comments %s',
 				'author'  => 'Articles of the author: %s',
 				'paged'   => 'Page %d',
-				'year'    => 'Archive for {year} year',           // Архив за 2023 год
-				'month'   => 'Archive for {month} {year}',        // Архив за январь 2023 года
-				'day'     => 'Archive for {month} {day}, {year}', // Archive for January 23, 2023
+				'year'    => 'Archive for {year} year',
+				'month'   => 'Archive for {month} {year}',
+				'day'     => 'Archive for {month} {day}, {year}',
 			];
-		}
 
 		/**
 		 * Allowes to change translations strings.
@@ -115,14 +109,11 @@ class Kama_SEO_Tags_Core {
 	 * For posts and taxonomies specific title can be specified as metadata with name `title`.	 *
 	 *
 	 * @param string $title `pre_get_document_title` passed value.
-	 *
-	 * @return string
 	 */
-	public function get_meta_title( $title = '' ) {
-
-		// support for `pre_get_document_title` hook.
+	public function get_meta_title( $title = '' ): string {
+		// handle `pre_get_document_title` hook
 		if( $title ){
-			return $title;
+			return (string) $title;
 		}
 
 		[ $post, $term ] = $this->get_queried_objects();
@@ -144,9 +135,8 @@ class Kama_SEO_Tags_Core {
 		elseif( is_search() ){
 			$parts['title'] = sprintf( $l10n['search'], get_query_var( 's' ) );
 		}
-		// front_page
+		// front_page (including is_home())
 		elseif( is_front_page() ){
-
 			if( is_page() ){
 				$parts['title'] = get_post_meta( $post->ID, 'title', true );
 			}
@@ -156,12 +146,8 @@ class Kama_SEO_Tags_Core {
 				$parts['after'] = '{{description}}';
 			}
 		}
-		// singular
-		elseif(
-			$post
-			|| ( is_home() && ! is_front_page() )
-			|| ( is_page() && ! is_front_page() )
-		){
+		// singular (including is_home() when static page set for home)
+		elseif( $post ){
 			$parts['title'] = get_post_meta( $post->ID, 'title', true );
 
 			/**
@@ -173,7 +159,7 @@ class Kama_SEO_Tags_Core {
 			$parts['title'] = apply_filters( 'kama_meta_title_singular', $parts['title'], $post );
 
 			if( ! $parts['title'] ){
-				$parts['title'] = single_post_title( '', 0 );
+				$parts['title'] = single_post_title( '', false );
 			}
 
 			if( $cpage = get_query_var( 'cpage' ) ){
@@ -182,7 +168,7 @@ class Kama_SEO_Tags_Core {
 		}
 		// post_type_archive
 		elseif( is_post_type_archive() ){
-			$parts['title'] = post_type_archive_title('', 0 );
+			$parts['title'] = post_type_archive_title( '', false );
 			$parts['after'] = '{{blog_name}}';
 		}
 		// any taxonomy
@@ -190,7 +176,7 @@ class Kama_SEO_Tags_Core {
 			$parts['title'] = get_term_meta( $term->term_id, 'title', true );
 
 			if( ! $parts['title'] ){
-				$parts['title'] = single_term_title( '', 0 );
+				$parts['title'] = single_term_title( '', false );
 
 				if( is_tax() ){
 					$parts['prev'] = get_taxonomy( $term->taxonomy )->labels->name;
@@ -215,7 +201,9 @@ class Kama_SEO_Tags_Core {
 
 			if( is_year() ){
 				// 2023 год
-				$parts['title'] = strtr( $l10n['year'], [ '{year}' => $y_num ] );
+				$parts['title'] = strtr( $l10n['year'], [
+					'{year}' => $y_num
+				] );
 			}
 			elseif( is_month() ){
 				// январь 2023 года
@@ -226,7 +214,7 @@ class Kama_SEO_Tags_Core {
 			}
 			elseif( is_day() ){
 				// 23 января 2023 года
-				$parts['title'] = strtr( $l10n['month'], [
+				$parts['title'] = strtr( $l10n['day'], [
 					'{year}'  => $y_num,
 					'{month}' => $wp_locale->month_genitive[ zeroise( $m_num, 2 ) ],
 					'{day}'   => $d_num,
@@ -281,7 +269,6 @@ class Kama_SEO_Tags_Core {
 		//$title = wptexturize( $title );
 		//$title = convert_chars( $title );
 		$title = capital_P_dangit( $title );
-		$title = esc_html( $title );
 
 		$this->title = $title;
 
@@ -314,12 +301,10 @@ class Kama_SEO_Tags_Core {
 	 * Gets `description` meta-tag: `<meta name="description" content="..." />`.
 	 *
 	 * Use post-meta with `description` key to set description for any posts.
-	 * It also work for page setted as front page.
+	 * It also works for page setted as front page.
 	 *
 	 * Use term-meta with `meta_description` key to set description for any terms.
 	 * Or use default `description` field of a term.
-	 *
-	 * @return string Metatag or empty string if not description found.
 	 */
 	public function set_meta_description(): void {
 		[ $post, $term ] = $this->get_queried_objects();
@@ -607,7 +592,6 @@ class Kama_SEO_Tags_og_meta {
 	}
 
 	protected function fill_type( ?WP_Post $post, ?WP_Term $term, array & $els ): void {
-
 		if( ! $post || ! is_singular() ){
 			$els['og:type'] = 'website';
 			return;
@@ -664,7 +648,6 @@ class Kama_SEO_Tags_og_meta {
 				}
 			}
 		}
-
 	}
 
 	protected function fill_og_url( ?WP_Post $post, ?WP_Term $term, array & $els ): void {
@@ -816,7 +799,6 @@ class Kama_SEO_Tags_og_meta {
 	 * then the ID is searched in DB by found image name.
 	 */
 	private function get_attach_image_id_from_text( string $text ): int {
-
 		preg_match( '/<img[^>]+(?:src|srcset) *= *[\'"](?P<src>[^\'", ]+)/', $text, $mm );
 
 		$src = $mm['src'] ?? '';
